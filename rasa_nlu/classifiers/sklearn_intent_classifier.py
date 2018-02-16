@@ -24,7 +24,7 @@ from rasa_nlu.training_data import TrainingData
 logger = logging.getLogger(__name__)
 
 # How many intents are at max put into the output intent ranking, everything else will be cut off
-INTENT_RANKING_LENGTH = 10
+INTENT_RANKING_LENGTH = 50
 
 # We try to find a good number of cross folds to use during intent training, this specifies the max number of folds
 MAX_CV_FOLDS = 5
