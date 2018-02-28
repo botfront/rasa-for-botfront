@@ -86,7 +86,7 @@ RUN pip install -r alt_requirements/requirements_spacy_sklearn.txt
 RUN pip install -e .
 
 RUN pip install https://storage.googleapis.com/mrbot_spacy_models/fr_core_news_md-2.0.0.tar.gz --no-cache-dir > /dev/null \
-    && python -m spacy fr_core_news_md fr \
+    && python -m spacy link fr_core_news_md fr \
     && pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-2.0.0/en_core_web_lg-2.0.0.tar.gz --no-cache-dir > /dev/null \
     && python -m spacy link en_core_web_lg en
 
