@@ -1,6 +1,14 @@
-timeout: "20m"
 steps:
 - name: 'gcr.io/cloud-builders/docker'
-  id: 'docker-build'
-  args: ['build', '--file', './docker/Dockerfile_full', '-t', '$_IMAGE_REPO:$TAG_NAME', '.']
-images: [ '$_IMAGE_REPO:$TAG_NAME' ]
+  args: [
+    'build',
+    '-t', 'gcr.io/mrbot-docker-images/rasa-nlu-$BRANCH_NAME:$COMMIT_SHA',
+    '-t', 'gcr.io/mrbot-docker-images/rasa-nlu-$BRANCH_NAME:latest',
+    '.'
+    ]
+timeout: 1200s
+images:
+- 'gcr.io/mrbot-docker-images/rasa-nlu-$BRANCH_NAME:$COMMIT_SHA'
+- 'gcr.io/mrbot-docker-images/rasa-nlu-$BRANCH_NAME:latest'
+options:
+  machineType: 'N1_HIGHCPU_32'
