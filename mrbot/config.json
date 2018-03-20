@@ -1,0 +1,4 @@
+{
+  "storage": "gcs",
+  "bucket_name": "rasa_nlu_models"
+}

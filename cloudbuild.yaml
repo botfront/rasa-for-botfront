@@ -2,6 +2,7 @@ steps:
 - name: 'gcr.io/cloud-builders/docker'
   args: [
     'build',
+    '-f', './mrbot/Dockerfile',
     '-t', 'gcr.io/mrbot-docker-images/rasa-nlu-$BRANCH_NAME:$COMMIT_SHA',
     '-t', 'gcr.io/mrbot-docker-images/rasa-nlu-$BRANCH_NAME:latest',
     '.'
