@@ -13,11 +13,11 @@ from typing import Tuple
 from typing import Optional
 
 from rasa_nlu.components import ComponentBuilder
-from rasa_nlu.converters import load_data
 from rasa_nlu.model import Interpreter
 from rasa_nlu.model import Trainer
 
 from rasa_nlu.config import RasaNLUConfig
+from rasa_nlu.training_data import load_data
 
 logger = logging.getLogger(__name__)
 
@@ -96,6 +96,8 @@ def do_train_in_worker(config):
         _, _, persisted_path = do_train(config)
         return persisted_path
     except Exception as e:
+        logger.exception("Failed to train project '{}'.".format(
+                config.get("project")))
         raise TrainingException(config.get("project"), e)
 
 

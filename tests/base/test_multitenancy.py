@@ -1,16 +1,13 @@
 # -*- coding: utf-8 -*-
-from __future__ import unicode_literals
-from __future__ import print_function
-from __future__ import division
 from __future__ import absolute_import
-
-import json
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
 
 import os
 import tempfile
 
 import pytest
-
 from treq.testing import StubTreq
 
 from rasa_nlu.config import RasaNLUConfig
@@ -51,15 +48,15 @@ def app(component_builder):
 
 @pytest.mark.parametrize("response_test", [
     ResponseTest(
-            "http://dummy_uri/parse?q=food&project=test_project_mitie",
+            "http://dummy-uri/parse?q=food&project=test_project_mitie",
             {"entities": [], "intent": "affirm", "text": "food"}
     ),
     ResponseTest(
-            "http://dummy_uri/parse?q=food&project=test_project_mitie_sklearn",
+            "http://dummy-uri/parse?q=food&project=test_project_mitie_sklearn",
             {"entities": [], "intent": "restaurant_search", "text": "food"}
     ),
     ResponseTest(
-            "http://dummy_uri/parse?q=food&project=test_project_spacy_sklearn",
+            "http://dummy-uri/parse?q=food&project=test_project_spacy_sklearn",
             {"entities": [], "intent": "restaurant_search", "text": "food"}
     ),
 ])
@@ -74,11 +71,11 @@ def test_get_parse(app, response_test):
 
 @pytest.mark.parametrize("response_test", [
     ResponseTest(
-            "http://dummy_uri/parse?q=food",
+            "http://dummy-uri/parse?q=food",
             {"error": "No project found with name 'default'."}
     ),
     ResponseTest(
-            "http://dummy_uri/parse?q=food&project=umpalumpa",
+            "http://dummy-uri/parse?q=food&project=umpalumpa",
             {"error": "No project found with name 'umpalumpa'."}
     )
 ])
@@ -92,17 +89,17 @@ def test_get_parse_invalid_model(app, response_test):
 
 @pytest.mark.parametrize("response_test", [
     ResponseTest(
-            "http://dummy_uri/parse",
+            "http://dummy-uri/parse",
             {"entities": [], "intent": "affirm", "text": "food"},
             payload={"q": "food", "project": "test_project_mitie"}
     ),
     ResponseTest(
-            "http://dummy_uri/parse",
+            "http://dummy-uri/parse",
             {"entities": [], "intent": "restaurant_search", "text": "food"},
             payload={"q": "food", "project": "test_project_mitie_sklearn"}
     ),
     ResponseTest(
-            "http://dummy_uri/parse",
+            "http://dummy-uri/parse",
             {"entities": [], "intent": "restaurant_search", "text": "food"},
             payload={"q": "food", "project": "test_project_spacy_sklearn"}
     ),
@@ -117,10 +114,10 @@ def test_post_parse(app, response_test):
 
 @pytest.inlineCallbacks
 def test_post_parse_specific_model(app):
-    status = yield app.get("http://dummy_uri/status")
+    status = yield app.get("http://dummy-uri/status")
     sjs = yield status.json()
     model = sjs["available_projects"]["test_project_mitie"]["available_models"][0]
-    query = ResponseTest("http://dummy_uri/parse", {"entities": [], "intent": "affirm", "text": "food"},
+    query = ResponseTest("http://dummy-uri/parse", {"entities": [], "intent": "affirm", "text": "food"},
                          payload={"q": "food", "project": "test_project_mitie", "model": model})
     response = yield app.post(query.endpoint, json=query.payload)
     assert response.code == 200
@@ -128,12 +125,12 @@ def test_post_parse_specific_model(app):
 
 @pytest.mark.parametrize("response_test", [
     ResponseTest(
-            "http://dummy_uri/parse",
+            "http://dummy-uri/parse",
             {"error": "No project found with name 'default'."},
             payload={"q": "food"}
     ),
     ResponseTest(
-            "http://dummy_uri/parse",
+            "http://dummy-uri/parse",
             {"error": "No project found with name 'umpalumpa'."},
             payload={"q": "food", "project": "umpalumpa"}
     ),
@@ -150,11 +147,11 @@ def train_models(component_builder):
     # Retrain different multitenancy models
     def train(cfg_name, project_name):
         from rasa_nlu.train import create_persistor
-        from rasa_nlu.converters import load_data
+        from rasa_nlu import training_data
 
         config = RasaNLUConfig(cfg_name)
         trainer = Trainer(config, component_builder)
-        training_data = load_data(config['data'])
+        training_data = training_data.load_data(config['data'])
 
         trainer.train(training_data)
         persistor = create_persistor(config)

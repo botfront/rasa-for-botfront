@@ -1,16 +1,20 @@
-from __future__ import unicode_literals
-from __future__ import print_function
-from __future__ import division
 from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+
+import errno
+import glob
+import io
+import json
 import os
 
+import simplejson
+import six
 from builtins import str
-import errno
 from typing import List
 from typing import Optional
 from typing import Text
-import json
-import io
 
 
 def relative_normpath(f, path):
@@ -25,7 +29,9 @@ def relative_normpath(f, path):
 
 def create_dir(dir_path):
     # type: (Text) -> None
-    """Creates a directory and its super paths. Succeeds even if the path already exists."""
+    """Creates a directory and its super paths.
+
+    Succeeds even if the path already exists."""
 
     try:
         os.makedirs(dir_path)
@@ -47,41 +53,56 @@ def create_dir_for_file(file_path):
             raise
 
 
-def recursively_find_files(resource_name):
-    # type: (Optional[Text]) -> List[Text]
-    """Traverse directory hierarchy to find files.
+def list_directory(path):
+    # type: (Text) -> List[Text]
+    """Returns all files and folders excluding hidden files.
 
-    `resource_name` can be a folder or a file. In both cases we will return a list of files."""
+    If the path points to a file, returns the file. This is a recursive
+    implementation returning files in any depth of the path."""
 
-    if not resource_name:
-        raise ValueError("Resource name '{}' must be an existing directory or file.".format(resource_name))
-    elif os.path.isfile(resource_name):
-        return [resource_name]
-    elif os.path.isdir(resource_name):
-        resources = []  # type: List[Text]
-        # walk the fs tree and return a list of files
-        nodes_to_visit = [resource_name]
-        while len(nodes_to_visit) > 0:
-            # skip hidden files
-            nodes_to_visit = [f for f in nodes_to_visit if not f.split("/")[-1].startswith('.')]
+    if not isinstance(path, six.string_types):
+        raise ValueError("Resourcename must be a string type")
 
-            current_node = nodes_to_visit[0]
-            # if current node is a folder, schedule its children for a visit. Else add them to the resources.
-            if os.path.isdir(current_node):
-                nodes_to_visit += [os.path.join(current_node, f) for f in os.listdir(current_node)]
-            else:
-                resources += [current_node]
-            nodes_to_visit = nodes_to_visit[1:]
-        return resources
+    if os.path.isfile(path):
+        return [path]
+    elif os.path.isdir(path):
+        results = []
+        for base, dirs, files in os.walk(path):
+            # remove hidden files
+            goodfiles = filter(lambda x: not x.startswith('.'), files)
+            results.extend(os.path.join(base, f) for f in goodfiles)
+        return results
     else:
-        raise ValueError("Could not locate the resource '{}'.".format(os.path.abspath(resource_name)))
+        raise ValueError("Could not locate the resource '{}'."
+                         "".format(os.path.abspath(path)))
+
+
+def list_files(path):
+    # type: (Text) -> List[Text]
+    """Returns all files excluding hidden files.
+
+    If the path points to a file, returns the file."""
+
+    return [fn for fn in list_directory(path) if os.path.isfile(fn)]
+
+
+def list_subdirectories(path):
+    # type: (Text) -> List[Text]
+    """Returns all folders excluding hidden files.
+
+    If the path points to a file, returns an empty list."""
+
+    return [fn
+            for fn in glob.glob(os.path.join(path, '*'))
+            if os.path.isdir(fn)]
 
 
 def lazyproperty(fn):
-    """Allows to avoid recomputing a property over and over. Instead the result gets stored in a local var.
+    """Allows to avoid recomputing a property over and over.
 
-    Computation of the property will happen once, on the first call of the property. All succeeding calls will use
-    the value stored in the private property."""
+    The result gets stored in a local var. Computation of the property
+    will happen once, on the first call of the property. All
+    succeeding calls will use the value stored in the private property."""
 
     attr_name = '_lazy_' + fn.__name__
 
@@ -147,3 +168,60 @@ def write_to_file(filename, text):
 
     with io.open(filename, 'w', encoding="utf-8") as f:
         f.write(str(text))
+
+
+def read_file(filename, encoding="utf-8-sig"):
+    """Read text from a file."""
+    with io.open(filename, encoding=encoding) as f:
+        return f.read()
+
+
+def read_json_file(filename):
+    """Read json from a file."""
+    content = read_file(filename)
+    try:
+        return simplejson.loads(content)
+    except ValueError as e:
+        raise ValueError("Failed to read json from '{}'. Error: "
+                         "{}".format(os.path.abspath(filename), e))
+
+
+def build_entity(start, end, value, entity_type, **kwargs):
+    """Builds a standard entity dictionary.
+
+    Adds additional keyword parameters."""
+
+    entity = {
+        "start": start,
+        "end": end,
+        "value": value,
+        "entity": entity_type
+    }
+
+    entity.update(kwargs)
+    return entity
+
+
+def is_model_dir(model_dir):
+    """Checks if the given directory contains a model and can be safely removed.
+
+    specifically checks if the directory has no subdirectories and
+    if all files have an appropriate ending."""
+    allowed_extensions = {".json", ".pkl", ".dat"}
+    dir_tree = list(os.walk(model_dir))
+    if len(dir_tree) != 1:
+        return False
+    model_dir, child_dirs, files = dir_tree[0]
+    file_extenstions = [os.path.splitext(f)[1] for f in files]
+    only_valid_files = all([ext in allowed_extensions for ext in file_extenstions])
+    return only_valid_files
+
+
+def remove_model(model_dir):
+    """Removes a model directory and all its content."""
+    import shutil
+    if is_model_dir(model_dir):
+        shutil.rmtree(model_dir)
+        return True
+    else:
+        raise ValueError("Cannot remove {}, it seems it is not a model directory".format(model_dir))
