@@ -1,4 +1,5 @@
 {
   "storage": "gcs",
-  "bucket_name": "rasa_nlu_models"
+  "bucket_name": "rasa_nlu_models",
+  "duckling_http_url": "http://duckling.mrbot-cloud.com:8000"
 }
