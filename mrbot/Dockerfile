@@ -1,4 +1,4 @@
-FROM gcr.io/mrbot-docker-images/rasa-nlu-base-master:latest
+FROM gcr.io/mrbot-docker-images/rasa-nlu-base-no-java:latest
 
 ENV RASA_NLU_DOCKER="YES" \
     RASA_NLU_HOME=/app \
