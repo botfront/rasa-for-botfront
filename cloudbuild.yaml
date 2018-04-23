@@ -8,7 +8,7 @@ steps:
     '.'
     ]
 - name: 'gcr.io/cloud-builders/gcloud'
-  args: ["beta", "compute", "instances", "update-container", "${_INSTANCE_NAME}", "--container-image", "gcr.io/mrbot-docker-images/rasa-nlu-$BRANCH_NAME:latest", "--zone", "${_INSTANCE_ZONE}"]
+  args: ["beta", "compute", "instances", "update-container", "${_INSTANCE_NAME}", "--container-image", "gcr.io/mrbot-docker-images/rasa-nlu-${BRANCH_NAME}:latest", "--zone", "${_INSTANCE_ZONE}"]
 timeout: 1200s
 images:
 - 'gcr.io/mrbot-docker-images/rasa-nlu-${BRANCH_NAME}:${TAG_NAME}'
