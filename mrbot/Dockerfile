@@ -12,4 +12,4 @@ RUN pip install -e .
 
 EXPOSE 5000
 
-CMD python -m rasa_nlu.server --storage gcs
+CMD python -m rasa_nlu.server --storage gcs --path projects
