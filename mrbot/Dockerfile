@@ -10,8 +10,6 @@ COPY . ${RASA_NLU_HOME}
 
 RUN pip install -e .
 
-COPY mrbot/config.json ${RASA_NLU_HOME}/config.json
-
 EXPOSE 5000
 
-CMD python -m rasa_nlu.server -c config.json
+CMD python -m rasa_nlu.server --storage gcs
