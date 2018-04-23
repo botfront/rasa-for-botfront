@@ -22,4 +22,3 @@ scipy==1.0.0
 sklearn-crfsuite==0.3.6
 tensorflow==1.6.0
 google-cloud-storage
-coloredlogs
