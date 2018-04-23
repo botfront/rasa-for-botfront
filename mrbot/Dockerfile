@@ -8,6 +8,8 @@ WORKDIR ${RASA_NLU_HOME}
 
 COPY . ${RASA_NLU_HOME}
 
+
+RUN pip install -r mrbot/requirements.txt
 RUN pip install -e .
 
 EXPOSE 5000
