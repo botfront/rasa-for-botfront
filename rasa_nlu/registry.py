@@ -16,6 +16,7 @@ from typing import Text
 from typing import Type
 
 from rasa_nlu.postprocessors.duckling_crf_merger import DucklingCrfMerger
+from rasa_nlu.postprocessors.entities_filter import EntitiesFilter
 from rasa_nlu.classifiers.keyword_intent_classifier import \
     KeywordIntentClassifier
 from rasa_nlu.classifiers.mitie_intent_classifier import MitieIntentClassifier
@@ -60,6 +61,7 @@ component_classes = [
     SklearnIntentClassifier, MitieIntentClassifier, KeywordIntentClassifier,
     EmbeddingIntentClassifier,
     DucklingCrfMerger,
+    EntitiesFilter
 ]
 
 # Mapping from a components name to its class to allow name based lookup.
