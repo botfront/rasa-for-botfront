@@ -15,6 +15,7 @@ from typing import Optional
 from typing import Text
 from typing import Type
 
+from rasa_nlu.postprocessors.entities_filter import EntitiesFilter
 from rasa_nlu.classifiers.keyword_intent_classifier import \
     KeywordIntentClassifier
 from rasa_nlu.classifiers.mitie_intent_classifier import MitieIntentClassifier
@@ -57,7 +58,8 @@ component_classes = [
     CountVectorsFeaturizer,
     MitieTokenizer, SpacyTokenizer, WhitespaceTokenizer, JiebaTokenizer,
     SklearnIntentClassifier, MitieIntentClassifier, KeywordIntentClassifier,
-    EmbeddingIntentClassifier
+    EmbeddingIntentClassifier,
+    EntitiesFilter
 ]
 
 # Mapping from a components name to its class to allow name based lookup.
