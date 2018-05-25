@@ -11,6 +11,7 @@ This project adheres to `Semantic Versioning`_ starting with version 0.7.0.
 
 Added
 -----
+- doc link to a community contribution for Rasa NLU in Chinese
 
 Changed
 -------
@@ -20,6 +21,7 @@ Removed
 
 Fixed
 -----
+- Fixed Luis emulation output to add start, end position and confidence for each entity.
 
 
 [0.12.3] - 2018-05-02
