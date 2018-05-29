@@ -2,7 +2,7 @@ FROM gcr.io/mrbot-docker-images/rasa-nlu-base-no-java:latest
 
 ENV RASA_NLU_DOCKER="YES" \
     RASA_NLU_HOME=/app \
-    RASA_NLU_PYTHON_PACKAGES=/usr/local/lib/python3.6/dist-packages
+    RASA_NLU_PYTHON_PACKAGES=/usr/local/lib/python2.7/dist-packages
 
 WORKDIR ${RASA_NLU_HOME}
 
