@@ -67,10 +67,10 @@ class EntitiesFilter(Component):
     def load(cls,
              model_dir=None,  # type: Text
              model_metadata=None,  # type: Metadata
-             cached_component=None,  # type: Optional[DucklingCrfMerger]
+             cached_component=None,  # type: Optional[EntitiesFilter]
              **kwargs  # type: **Any
              ):
-        # type: (...) -> DucklingCrfMerger
+        # type: (...) -> EntitiesFilter
 
         component_config = model_metadata.for_component(cls.name)
         return cls(component_config)
