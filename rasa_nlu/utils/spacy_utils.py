@@ -107,6 +107,7 @@ class SpacyNLP(Component):
         # type: (Message, **Any) -> None
 
         message.set("spacy_doc", self.doc_for_text(message.text))
+        message.set("spacy_nlp", self.nlp)
 
     @classmethod
     def load(cls,
