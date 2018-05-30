@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 class EntitySynonymsVectors(Component):
-    """Filter entities wrt intent"""
+    """Finds synonyms for specific entities"""
 
     name = "ner_synonyms_vectors"
     provides = ["entities"]
