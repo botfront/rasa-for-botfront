@@ -1,15 +1,6 @@
+timeout: "20m"
 steps:
 - name: 'gcr.io/cloud-builders/docker'
-  args: [
-    'build',
-    '-f', './mrbot/Dockerfile',
-    '-t', 'gcr.io/mrbot-docker-images/rasa-nlu-mrbot:${TAG_NAME}',
-    '-t', 'gcr.io/mrbot-docker-images/rasa-nlu-mrbot:latest',
-    '.'
-    ]
-- name: 'gcr.io/cloud-builders/gcloud'
-  args: ["beta", "compute", "instances", "update-container", "${_INSTANCE_NAME}", "--container-image", "gcr.io/mrbot-docker-images/rasa-nlu-mrbot:latest", "--zone", "${_INSTANCE_ZONE}"]
-timeout: 1200s
-images:
-- 'gcr.io/mrbot-docker-images/rasa-nlu-mrbot:${TAG_NAME}'
-- 'gcr.io/mrbot-docker-images/rasa-nlu-mrbot:latest'
+  id: 'docker-build'
+  args: ['build', '--file', './docker/Dockerfile_full', '-t', '$_IMAGE_REPO:$TAG_NAME', '.']
+images: [ '$_IMAGE_REPO:$TAG_NAME' ]
