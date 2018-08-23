@@ -21,7 +21,7 @@ from rasa_nlu.config import RasaNLUModelConfig
 from rasa_nlu.evaluate import get_evaluation_metrics, clean_intent_labels
 from rasa_nlu.model import InvalidProjectError
 from rasa_nlu.project import Project
-from rasa_nlu.train import do_train_in_worker
+from rasa_nlu.train import do_train_in_worker, TrainingException
 from rasa_nlu.training_data.loading import load_data
 from twisted.internet import reactor
 from twisted.internet.defer import Deferred
@@ -43,16 +43,16 @@ logger = logging.getLogger(__name__)
 DEFERRED_RUN_IN_REACTOR_THREAD = True
 
 
-class AlreadyTrainingError(Exception):
-    """Raised when a training is requested for a project that is
-       already training.
+class MaxTrainingError(Exception):
+    """Raised when a training is requested and the server has
+        reached the max count of training processes.
 
     Attributes:
         message -- explanation of why the request is invalid
     """
 
     def __init__(self):
-        self.message = 'The project is already being trained!'
+        self.message = 'The server can\'t train more models right now!'
 
     def __str__(self):
         return self.message
@@ -94,6 +94,7 @@ class DataRouter(object):
                  remote_storage=None,
                  component_builder=None):
         self._training_processes = max(max_training_processes, 1)
+        self._current_training_processes = 0
         self.responses = self._create_query_logger(response_log)
         self.project_dir = config.make_path_absolute(project_dir)
         self.emulator = self._create_emulator(emulation_mode)
@@ -210,6 +211,13 @@ class DataRouter(object):
         else:
             raise ValueError("unknown mode : {0}".format(mode))
 
+    @staticmethod
+    def _tf_in_pipeline(model_config):
+        # type: (RasaNLUModelConfig) -> bool
+        from rasa_nlu.classifiers.embedding_intent_classifier import \
+            EmbeddingIntentClassifier
+        return EmbeddingIntentClassifier.name in model_config.component_names
+
     def extract(self, data):
         return self.emulator.normalise_request_json(data)
 
@@ -276,6 +284,8 @@ class DataRouter(object):
         # be other trainings run in different processes we don't know about.
 
         return {
+            "max_training_processes": self._training_processes,
+            "current_training_processes": self._current_training_processes,
             "available_projects": {
                 name: project.as_dict()
                 for name, project in self.project_store.items()
@@ -295,8 +305,8 @@ class DataRouter(object):
             raise InvalidProjectError("Missing project name to train")
 
         if project in self.project_store:
-            if self.project_store[project].status == 1:
-                raise AlreadyTrainingError
+            if self._training_processes <= self._current_training_processes:
+                raise MaxTrainingError
             else:
                 self.project_store[project].status = 1
         elif project not in self.project_store:
@@ -308,30 +318,68 @@ class DataRouter(object):
         def training_callback(model_path):
             model_dir = os.path.basename(os.path.normpath(model_path))
             self.project_store[project].update(model_dir)
+            self._current_training_processes -= 1
+            self.project_store[project].current_training_processes -= 1
+            if (self.project_store[project].status == 1 and
+                    self.project_store[project].current_training_processes ==
+                    0):
+                self.project_store[project].status = 0
             return model_dir
 
         def training_errback(failure):
-            logger.warn(failure)
+            logger.warning(failure)
             target_project = self.project_store.get(
                     failure.value.failed_target_project)
-            if target_project:
+            self._current_training_processes -= 1
+            self.project_store[project].current_training_processes -= 1
+            if (target_project and
+                    self.project_store[project].current_training_processes ==
+                    0):
                 target_project.status = 0
             return failure
 
         logger.debug("New training queued")
 
-        result = self.pool.submit(do_train_in_worker,
-                                  train_config,
-                                  data_file,
-                                  path=self.project_dir,
-                                  project=project,
-                                  fixed_model_name=model_name,
-                                  storage=self.remote_storage)
-        result = deferred_from_future(result)
-        result.addCallback(training_callback)
-        result.addErrback(training_errback)
+        self._current_training_processes += 1
+        self.project_store[project].current_training_processes += 1
 
-        return result
+        # tensorflow training is not executed in a separate thread, as this may
+        # cause training to freeze
+        if self._tf_in_pipeline(train_config):
+            try:
+                logger.warning("Training a pipeline with a tensorflow "
+                               "component. This blocks the server during "
+                               "training.")
+                model_path = do_train_in_worker(
+                    train_config,
+                    data_file,
+                    path=self.project_dir,
+                    project=project,
+                    fixed_model_name=model_name,
+                    storage=self.remote_storage)
+                model_dir = os.path.basename(os.path.normpath(model_path))
+                self.project_store[project].update(model_dir)
+                return model_dir
+            except TrainingException as e:
+                logger.warning(e)
+                target_project = self.project_store.get(
+                    e.failed_target_project)
+                if target_project:
+                    target_project.status = 0
+                raise e
+        else:
+            result = self.pool.submit(do_train_in_worker,
+                                      train_config,
+                                      data_file,
+                                      path=self.project_dir,
+                                      project=project,
+                                      fixed_model_name=model_name,
+                                      storage=self.remote_storage)
+            result = deferred_from_future(result)
+            result.addCallback(training_callback)
+            result.addErrback(training_errback)
+
+            return result
 
     def evaluate(self, data, project=None, model=None):
         # type: (Text, Optional[Text], Optional[Text]) -> Dict[Text, Any]
@@ -381,7 +429,7 @@ class DataRouter(object):
         """Unload a model from server memory."""
 
         if project is None:
-            raise InvalidProjectError("No project specified".format(project))
+            raise InvalidProjectError("No project specified")
         elif project not in self.project_store:
             raise InvalidProjectError("Project {} could not "
                                       "be found".format(project))
