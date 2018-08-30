@@ -401,6 +401,8 @@ class DataRouter(object):
         predictions = [
             {"text": e.text,
              "intent": e.data.get("intent"),
+             "entities": e.data.get("entities"),
+             "predicted_entities": p.get("entities", []),
              "predicted": p.get("intent", {}).get("name"),
              "confidence": p.get("intent", {}).get("confidence")}
             for e, p in zip(test_data.intent_examples, preds_json)
