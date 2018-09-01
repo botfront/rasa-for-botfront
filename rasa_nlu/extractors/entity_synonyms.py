@@ -27,11 +27,19 @@ class EntitySynonymMapper(EntityExtractor):
 
     provides = ["entities"]
 
+    defaults = {
+        # set to true to substitute the synonym value in text
+        # dimensions can be configured to contain an array of strings
+        # with the names of the dimensions to filter for
+        "substitute_in_text": False,
+
+    }
+
     def __init__(self, component_config=None, synonyms=None):
         # type: (Optional[Dict[Text, Text]]) -> None
 
         super(EntitySynonymMapper, self).__init__(component_config)
-
+        self.substitute_in_text = self.component_config.get("substitute_in_text", False)
         self.synonyms = synonyms if synonyms else {}
 
     def train(self, training_data, config, **kwargs):
@@ -48,9 +56,23 @@ class EntitySynonymMapper(EntityExtractor):
 
     def process(self, message, **kwargs):
         # type: (Message, **Any) -> None
-
         updated_entities = message.get("entities", [])[:]
         self.replace_synonyms(updated_entities)
+
+        def shift_entities(entities, shift):
+            for e in entities:
+                e["start"] += shift
+                e["end"] += shift
+
+        if self.substitute_in_text and len(updated_entities):
+            text_with_substitutions = message.text
+            for i, entity in enumerate(updated_entities):
+                message.text = message.text[0:entity["start"]] + entity["value"] + message.text[entity["end"]:]
+                shift = len(entity["value"]) - (entity["end"] - entity["start"])
+                entity["end"] = entity["start"] + len(entity["value"])
+                if len(updated_entities) > i + 1: # more entities:
+                    shift_entities(updated_entities[i+1:], shift)
+
         message.set("entities", updated_entities, add_to_output=True)
 
     def persist(self, model_dir):
