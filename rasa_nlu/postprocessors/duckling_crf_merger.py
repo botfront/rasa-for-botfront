@@ -42,9 +42,9 @@ class DucklingCrfMerger(Component):
     def process(self, message, **kwargs):
         # type: (Message, **Any) -> None
         print(self.component_config["entities"])
-        crf_entities = filter(
+        crf_entities = list(filter(
             lambda e: e["extractor"] == "ner_crf" and e["entity"] in self.component_config["entities"].keys(),
-            message.get("entities"))
+            message.get("entities")))
         indices_to_remove = []
 
         for index, duck_entity in enumerate(message.get("entities")):
