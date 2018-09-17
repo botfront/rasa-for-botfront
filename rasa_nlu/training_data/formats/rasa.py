@@ -27,7 +27,7 @@ class RasaReader(JsonTrainingDataReader):
         entity_examples = data.get("entity_examples", [])
         entity_synonyms = data.get("entity_synonyms", [])
         regex_features = data.get("regex_features", [])
-        gazette = data.get("gazette", {})
+        fuzzy_gazette = data.get("fuzzy_gazette", {})
 
 
         entity_synonyms = transform_entity_synonyms(entity_synonyms)
@@ -47,7 +47,7 @@ class RasaReader(JsonTrainingDataReader):
                                 ex.get("entities"))
             training_examples.append(msg)
 
-        return TrainingData(training_examples, entity_synonyms, regex_features, gazette)
+        return TrainingData(training_examples, entity_synonyms, regex_features, fuzzy_gazette)
 
 
 class RasaWriter(TrainingDataWriter):

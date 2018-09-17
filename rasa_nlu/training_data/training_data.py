@@ -40,7 +40,7 @@ class TrainingData(object):
                  training_examples=None,
                  entity_synonyms=None,
                  regex_features=None,
-                 gazette=None):
+                 fuzzy_gazette=None):
         # type: (Optional[List[Message]], Optional[Dict[Text, Text]]) -> None
 
         if training_examples:
@@ -49,7 +49,7 @@ class TrainingData(object):
             self.training_examples = []
         self.entity_synonyms = entity_synonyms if entity_synonyms else {}
         self.regex_features = regex_features if regex_features else []
-        self.gazette = gazette if gazette else {}
+        self.fuzzy_gazette = fuzzy_gazette if fuzzy_gazette else []
         self.sort_regex_features()
 
         self.validate()

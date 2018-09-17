@@ -49,7 +49,7 @@ class FuzzyGazette(Component):
     def train(self, training_data, config, **kwargs):
         # type: (TrainingData, RasaNLUModelConfig, **Any) -> None
 
-        self._load_gazette(training_data.gazette)
+        self._load_gazette(training_data.fuzzy_gazette)
 
     def _load_gazette(self, gazette):
         # type: (Dict) -> None
