@@ -17,6 +17,7 @@ class FuzzyGazette(Component):
     defaults = {
         "minimum_score": 80,
         "max_num_suggestions": 5,
+        "mode": "ratio"
     }
 
     def __init__(self, component_config=None, gazette=None):
@@ -29,7 +30,7 @@ class FuzzyGazette(Component):
     def process(self, message, **kwargs):
         # type: (Message, **Any) -> None
 
-        fuzzy = Fuzzy('/Users/theodoretomalty/mrbot/rasa_nlu/rasa_nlu/accor_fuzzy/FullNameHotel.txt')
+        fuzzy = Fuzzy('/Users/theodoretomalty/mrbot/rasa_nlu/rasa_nlu/accor_fuzzy/FullNameHotel.txt', self.component_config.get("mode"))
         entities = message.get("entities", [])
 
         for entity in entities:
