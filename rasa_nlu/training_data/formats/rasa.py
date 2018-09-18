@@ -27,7 +27,7 @@ class RasaReader(JsonTrainingDataReader):
         entity_examples = data.get("entity_examples", [])
         entity_synonyms = data.get("entity_synonyms", [])
         regex_features = data.get("regex_features", [])
-        fuzzy_gazette = data.get("fuzzy_gazette", {})
+        fuzzy_gazette = data.get("fuzzy_gazette", [])
 
 
         entity_synonyms = transform_entity_synonyms(entity_synonyms)
@@ -68,7 +68,8 @@ class RasaWriter(TrainingDataWriter):
             "rasa_nlu_data": {
                 "common_examples": formatted_examples,
                 "regex_features": training_data.regex_features,
-                "entity_synonyms": formatted_synonyms
+                "entity_synonyms": formatted_synonyms,
+                "fuzzy_gazette": training_data.fuzzy_gazette
             }
         }, **kwargs)
 
