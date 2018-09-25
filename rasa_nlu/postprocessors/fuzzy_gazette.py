@@ -5,16 +5,23 @@ from typing import Text
 from typing import Dict
 from typing import Optional
 
-
-from rasa_nlu.accor_fuzzy.fuzzy import Fuzzy
 from rasa_nlu.components import Component
 from rasa_nlu.config import RasaNLUModelConfig
 from rasa_nlu.training_data import Message, TrainingData
 from rasa_nlu.model import Metadata
 
-
+from fuzzywuzzy import fuzz
+from fuzzywuzzy import process
 
 FUZZY_GAZETTE_FILE = "fuzzy_gazette.json"
+
+
+def _find_matches(query, gazette, mode="ratio", limit=5):
+    output = {}
+    for key, val in gazette.items():
+        output[key] = process.extract(query, val, limit=limit, scorer=getattr(fuzz, mode))
+    return output
+
 
 class FuzzyGazette(Component):
     name = "fuzzy_gazette"
@@ -36,17 +43,17 @@ class FuzzyGazette(Component):
     def process(self, message, **kwargs):
         # type: (Message, **Any) -> None
 
-        fuzzy = Fuzzy(self.gazette, self.component_config.get("mode"))
         entities = message.get("entities", [])
+        mode = self.component_config.get("mode")
+        limit = self.component_config.get("max_num_suggestions")
 
         for entity in entities:
-            matches = fuzzy.find_matches(entity["value"])
+            matches = _find_matches(entity["value"], self.gazette, mode=mode, limit=limit)
             top_matches = []
-            for key, val in matches:
+            for key, val in matches.items():
                 for item in val:
                     top_matches.append((key, *item))
             top_matches.sort(key=lambda x: x[2])
-            top_matches = top_matches[:self.component_config.get("max_num_suggestions")]
 
             key, primary, score = top_matches.pop() if len(top_matches) else (None, None, None)
 
