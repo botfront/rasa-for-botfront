@@ -75,7 +75,7 @@ class FuzzyGazette(Component):
                 entity["entity"] = key
                 entity["value"] = primary
 
-                entity["gazette_best_matches"] = [{"entity": entity, "value": value, "score": num} for entity, value, num in top_matches]
+                entity["gazette_matches"] = [{"entity": entity, "value": value, "score": num} for entity, value, num in top_matches]
 
         message.set("entities", entities)
 
@@ -129,8 +129,8 @@ class FuzzyGazette(Component):
             assert "name" in rep, "Must provide the entity name for the gazette entity configuration: {}".format(rep)
             assert rep["name"] in self.gazette, "Could not find entity name {0} in gazette {1}".format(rep["name"], self.gazette)
 
-            supported_properties = ["entities", "mode", "min_score"]
-            defaults = [[], "ratio", 80]
+            supported_properties = ["mode", "min_score"]
+            defaults = ["ratio", 80]
 
             new_element = {"name": rep["name"]}
             for prop, default in zip(supported_properties, defaults):

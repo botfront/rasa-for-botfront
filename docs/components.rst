@@ -658,3 +658,57 @@ ner_duckling_http
           # if not set the default timezone of Duckling is going to be used
           # needed to calculate dates from relative expressions like "tomorrow"
           timezone: "Europe/Berlin"
+
+.. _fuzzy_gazette:
+
+fuzzy_gazette
+~~~~~~~~~~~~~
+:Short: Fuzzy Gazette is a fuzzy matching feature that will match entities of a stated type
+        to a list. If there is a match, and the score is above the specified threshold, the
+        the matched item replaces the entity value.
+
+:Training-Data:
+    The gazette abject is to be inserted into the training data like so:
+
+    .. code-block:: json
+
+        {
+            "rasa_nlu_data": {
+                "fuzzy_gazette": [
+                    {
+                        "value": "CompositeLocation",
+                        "gazette": [
+                            "Fairmont Dallas",
+                            "Mercure Hotel Aachen Europaplatz",
+                            "ibis budget Rennes Cesson",
+                            "Novotel Beaune",
+                            "ibis budget Clermont Ferrand Nord Riom",
+                            "Ji Hotel Shanghai Yanan Rd",
+                        ]
+                    }
+                ]
+            }
+        }
+
+:Configuration:
+    Configurations shown below. All optional parameters are displayed with the default values.
+
+    .. code-block:: yaml
+
+        pipeline:
+        - name: “fuzzy_gazette”
+          # (optional) will only consider modifying entities with these extractors
+          extractors: [“ner_crf”]
+          # (optional) number of matches to save in entity object under
+          # 'gazette_matches' property
+          max_num_suggestions: 5
+          entities:
+            # the entity that is matched (must be the same as an entity in
+            # rasa_nlu_data.fuzzy_gazette)
+          - name: “CompositeLocation”
+            # (optional) the matching mode, supports ["ratio", "partial_ratio",
+            # "token_sort_ratio", "token_set_ratio"]
+            mode: “ratio”
+            # (optional) the minimum score to be considered a match (will still
+            #post to gazette_matches if under)
+            min_score: 80
