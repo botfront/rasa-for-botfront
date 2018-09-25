@@ -48,6 +48,9 @@ class FuzzyGazette(Component):
         limit = self.component_config.get("max_num_suggestions")
 
         for entity in entities:
+            if not isinstance(entity["value"], str):
+                continue
+
             matches = _find_matches(entity["value"], self.gazette, mode=mode, limit=limit)
             top_matches = []
             for key, val in matches.items():
