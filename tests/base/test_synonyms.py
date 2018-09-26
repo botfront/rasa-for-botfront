@@ -3,9 +3,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-from rasa_nlu.extractors.entity_synonyms import EntitySynonymMapper
 from rasa_nlu.extractors.entity_synonyms_endpoints import EntitySynonymBegin, EntitySynonymEnd
-
 from rasa_nlu.training_data.message import Message
 
 from pytest import raises

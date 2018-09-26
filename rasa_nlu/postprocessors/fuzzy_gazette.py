@@ -62,20 +62,14 @@ class FuzzyGazette(Component):
             if not isinstance(entity["value"], str) or not right_extractor or config is None:
                 continue
 
-            matches = _find_matches(entity["value"], self.gazette, mode=config["mode"], limit=limit)
-            top_matches = []
-            for key, val in matches.items():
-                for item in val:
-                    top_matches.append((key, *item))
-            top_matches.sort(key=lambda x: x[2])
+            matches = process.extract(entity["value"], self.gazette.get(entity["entity"], []), limit=limit, scorer=getattr(fuzz, config["mode"]))
+            matches.sort(key=lambda x: x[1])
 
-            key, primary, score = top_matches[-1] if len(top_matches) else (None, None, None)
+            primary, score = matches[-1] if len(matches) else (None, None, None)
 
             if primary is not None and score > config["min_score"]:
-                entity["entity"] = key
                 entity["value"] = primary
-
-                entity["gazette_matches"] = [{"entity": entity, "value": value, "score": num} for entity, value, num in top_matches]
+                entity["gazette_matches"] = [{"value": value, "score": num} for value, num in matches]
 
         message.set("entities", entities)
 
