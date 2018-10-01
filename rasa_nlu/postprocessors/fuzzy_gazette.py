@@ -1,4 +1,5 @@
 import os
+import warnings
 
 from typing import Any
 from typing import Text
@@ -81,11 +82,11 @@ class FuzzyGazette(Component):
     def persist(self, model_dir):
         # type: (Text) -> Optional[Dict[Text, Any]]
 
-        if self.gazette:
-            from rasa_nlu.utils import write_json_to_file
-            file_name = os.path.join(model_dir, FUZZY_GAZETTE_FILE)
+        gazette = self.gazette if self.gazette else {}
 
-            write_json_to_file(file_name, self.gazette,
+        from rasa_nlu.utils import write_json_to_file
+        file_name = os.path.join(model_dir, FUZZY_GAZETTE_FILE)
+        write_json_to_file(file_name, gazette,
                                separators=(',', ': '))
 
         return {"gazette_file": FUZZY_GAZETTE_FILE}
@@ -103,7 +104,13 @@ class FuzzyGazette(Component):
         file_name = meta.get("gazette_file", FUZZY_GAZETTE_FILE)
         path = os.path.join(model_dir, file_name)
 
-        gazette = read_json_file(path)
+        if os.path.isfile(path):
+            gazette = read_json_file(path)
+        else:
+            gazette = None
+            warnings.warn("Failed to load gazette file from '{}'"
+                          "".format(path))
+
         return FuzzyGazette(meta, gazette)
 
     def _load_gazette_list(self, gazette):
@@ -112,10 +119,7 @@ class FuzzyGazette(Component):
         for item in gazette:
             name = item["value"]
             table = item["gazette"]
-            if name in self.gazette:
-                self.gazette[name] += table
-            else:
-                self.gazette[name] = table
+            self.gazette[name] = table
 
     def _load_config(self):
         entities = []
