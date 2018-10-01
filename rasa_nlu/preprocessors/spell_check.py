@@ -26,7 +26,7 @@ class BingSpellCheck(Component):
 
     def __init__(self, component_config=None):
         # type: (RasaNLUModelConfig) -> None
-        super(Component, self).__init__(component_config)
+        super(BingSpellCheck, self).__init__(component_config)
 
         self.url = 'https://api.cognitive.microsoft.com/bing/v7.0/spellcheck/'
         self.header = {
@@ -38,10 +38,9 @@ class BingSpellCheck(Component):
 
         text = message.get('text', '')
         response = self._response(text)
+        tokens = response.get('flaggedTokens', [])
 
-        tokens = sorted(response.get('flaggedTokens', []), key=lambda x: x['offset'])
         replacements = self._get_replacements(tokens)
-
         message.set('text', self._replace(text, replacements))
 
     def _response(self, text):
@@ -76,7 +75,7 @@ class BingSpellCheck(Component):
 
     @staticmethod
     def _replace(text, replacements):
-        replacements.sort(lambda x: x['offset'])
+        replacements.sort(key=lambda x: x['offset'])
         start_next = len(text)
 
         while len(replacements):
@@ -87,7 +86,7 @@ class BingSpellCheck(Component):
             replacement = flagged_token['replacement']
 
             if offset + len(token) <= start_next:
-                text = text.substr(0, offset) + replacement + text.substr(offset + len(token))
+                text = text[0:offset] + replacement + text[offset + len(token):]
                 start_next = offset
 
         return text
