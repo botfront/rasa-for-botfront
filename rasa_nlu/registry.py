@@ -15,6 +15,7 @@ from typing import Optional
 from typing import Text
 from typing import Type
 
+from rasa_nlu.preprocessors.spell_check import BingSpellCheck
 from rasa_nlu.postprocessors.duckling_crf_merger import DucklingCrfMerger
 from rasa_nlu.postprocessors.entities_filter import EntitiesFilter
 from rasa_nlu.postprocessors.fuzzy_gazette import FuzzyGazette
@@ -64,7 +65,7 @@ component_classes = [
     SklearnIntentClassifier, MitieIntentClassifier, KeywordIntentClassifier,
     EmbeddingIntentClassifier,
     DucklingCrfMerger,
-    EntitiesFilter, FuzzyGazette
+    EntitiesFilter, FuzzyGazette, BingSpellCheck
 ]
 
 # Mapping from a components name to its class to allow name based lookup.
