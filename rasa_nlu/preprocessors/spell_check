@@ -16,8 +16,8 @@ from rasa_nlu.training_data.message import Message
 logger = logging.getLogger(__name__)
 
 
-class SpellCheck(Component):
-    name = 'spell_check'
+class BingSpellCheck(Component):
+    name = 'bing_spell_check'
 
     defaults = {
         'key': '',
