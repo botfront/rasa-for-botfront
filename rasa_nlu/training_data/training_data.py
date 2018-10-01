@@ -63,6 +63,7 @@ class TrainingData(object):
         training_examples = deepcopy(self.training_examples)
         entity_synonyms = self.entity_synonyms.copy()
         regex_features = deepcopy(self.regex_features)
+        fuzzy_gazette = deepcopy(self.fuzzy_gazette)
         lookup_tables = deepcopy(self.lookup_tables)
 
         for o in others:
@@ -77,7 +78,7 @@ class TrainingData(object):
             entity_synonyms.update(o.entity_synonyms)
 
         return TrainingData(training_examples, entity_synonyms,
-                            regex_features, lookup_tables)
+                            regex_features, fuzzy_gazette, lookup_tables)
 
     @staticmethod
     def sanitize_examples(examples):
@@ -215,11 +216,13 @@ class TrainingData(object):
             train,
             entity_synonyms=self.entity_synonyms,
             regex_features=self.regex_features,
+            fuzzy_gazette=self.fuzzy_gazette,
             lookup_tables=self.lookup_tables)
         data_test = TrainingData(
             test,
             entity_synonyms=self.entity_synonyms,
             regex_features=self.regex_features,
+            fuzzy_gazette=self.fuzzy_gazette,
             lookup_tables=self.lookup_tables)
         return data_train, data_test
 
