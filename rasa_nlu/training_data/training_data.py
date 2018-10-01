@@ -40,7 +40,8 @@ class TrainingData(object):
                  training_examples=None,
                  entity_synonyms=None,
                  regex_features=None,
-                 fuzzy_gazette=None):
+                 fuzzy_gazette=None,
+                 lookup_tables=None):
         # type: (Optional[List[Message]], Optional[Dict[Text, Text]]) -> None
 
         if training_examples:
@@ -51,6 +52,7 @@ class TrainingData(object):
         self.regex_features = regex_features if regex_features else []
         self.fuzzy_gazette = fuzzy_gazette if fuzzy_gazette else []
         self.sort_regex_features()
+        self.lookup_tables = lookup_tables if lookup_tables else []
 
         self.validate()
         self.print_stats()
@@ -61,10 +63,12 @@ class TrainingData(object):
         training_examples = deepcopy(self.training_examples)
         entity_synonyms = self.entity_synonyms.copy()
         regex_features = deepcopy(self.regex_features)
+        lookup_tables = deepcopy(self.lookup_tables)
 
         for o in others:
             training_examples.extend(deepcopy(o.training_examples))
             regex_features.extend(deepcopy(o.regex_features))
+            lookup_tables.extend(deepcopy(o.lookup_tables))
 
             for text, syn in o.entity_synonyms.items():
                 check_duplicate_synonym(entity_synonyms, text, syn,
@@ -72,7 +76,8 @@ class TrainingData(object):
 
             entity_synonyms.update(o.entity_synonyms)
 
-        return TrainingData(training_examples, entity_synonyms, regex_features)
+        return TrainingData(training_examples, entity_synonyms,
+                            regex_features, lookup_tables)
 
     @staticmethod
     def sanitize_examples(examples):
@@ -209,11 +214,13 @@ class TrainingData(object):
         data_train = TrainingData(
             train,
             entity_synonyms=self.entity_synonyms,
-            regex_features=self.regex_features)
+            regex_features=self.regex_features,
+            lookup_tables=self.lookup_tables)
         data_test = TrainingData(
             test,
             entity_synonyms=self.entity_synonyms,
-            regex_features=self.regex_features)
+            regex_features=self.regex_features,
+            lookup_tables=self.lookup_tables)
         return data_train, data_test
 
     def print_stats(self):
