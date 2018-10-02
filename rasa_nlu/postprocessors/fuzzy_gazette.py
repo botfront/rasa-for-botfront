@@ -129,14 +129,14 @@ class FuzzyGazette(Component):
 
             supported_properties = ["mode", "min_score"]
             defaults = ["ratio", 80]
+            types = [str, int]
 
             new_element = {"name": rep["name"]}
-            for prop, default in zip(supported_properties, defaults):
+            for prop, default, t in zip(supported_properties, defaults, types):
                 if prop not in rep:
                     new_element[prop] = default
                 else:
-                    assert isinstance(rep[prop], type(default)), "The type of {0} in {1} does not match the default".format(prop, rep["name"])
-                    new_element[prop] = rep[prop]
+                    new_element[prop] = t(rep[prop])
 
             entities.append(new_element)
 
