@@ -22,6 +22,8 @@ class BingSpellCheck(Component):
     defaults = {
         'key': '',
         'min_score': 0.8,
+        'language': 'en-US',
+        'enabled': True,
     }
 
     def __init__(self, component_config=None):
@@ -31,17 +33,20 @@ class BingSpellCheck(Component):
         self.url = 'https://api.cognitive.microsoft.com/bing/v7.0/spellcheck/'
         self.header = {
             'Ocp-Apim-Subscription-Key': self.component_config['key'],
+            'setLang': self.component_config['language'][:2],
         }
 
     def process(self, message, **kwargs):
         # type: (Message, **Any) -> None
 
-        text = message.get('text', '')
+        text = message.text
         response = self._response(text)
         tokens = response.get('flaggedTokens', [])
 
         replacements = self._get_replacements(tokens)
-        message.set('text', self._replace(text, replacements))
+
+        if self.component_config.get('enabled', True):
+            message.text = self._replace(text, replacements)
 
     def _response(self, text):
         # type (str) -> dict
@@ -67,10 +72,11 @@ class BingSpellCheck(Component):
                          "Error: {}".format(e))
             return default_response
 
-    @staticmethod
-    def _payload(text):
+    def _payload(self, text):
         return {
             'text': text,
+            'mode': 'spell',
+            'mkt': self.component_config['language'],
         }
 
     @staticmethod
