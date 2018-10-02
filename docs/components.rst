@@ -712,3 +712,8 @@ fuzzy_gazette
             # (optional) the minimum score to be considered a match (will still
             #post to gazette_matches if under)
             min_score: 80
+		  
+.. include:: feedback.inc		  
+		  
+.. raw:: html
+   :file: livechat.html

@@ -28,7 +28,7 @@ class RasaReader(JsonTrainingDataReader):
         entity_synonyms = data.get("entity_synonyms", [])
         regex_features = data.get("regex_features", [])
         fuzzy_gazette = data.get("fuzzy_gazette", [])
-
+        lookup_tables = data.get("lookup_tables", [])
 
         entity_synonyms = transform_entity_synonyms(entity_synonyms)
 
@@ -47,7 +47,8 @@ class RasaReader(JsonTrainingDataReader):
                                 ex.get("entities"))
             training_examples.append(msg)
 
-        return TrainingData(training_examples, entity_synonyms, regex_features, fuzzy_gazette)
+        return TrainingData(training_examples, entity_synonyms,
+                            regex_features, fuzzy_gazette, lookup_tables)
 
 
 class RasaWriter(TrainingDataWriter):
@@ -69,7 +70,8 @@ class RasaWriter(TrainingDataWriter):
                 "common_examples": formatted_examples,
                 "regex_features": training_data.regex_features,
                 "entity_synonyms": formatted_synonyms,
-                "fuzzy_gazette": training_data.fuzzy_gazette
+                "fuzzy_gazette": training_data.fuzzy_gazette,
+                "lookup_tables": training_data.lookup_tables,
             }
         }, **kwargs)
 
@@ -122,6 +124,22 @@ def _rasa_nlu_data_schema():
         }
     }
 
+    lookup_table_schema = {
+        "type": "object",
+        "properties": {
+            "name": {"type": "string"},
+            "elements": {
+                "oneOf": [
+                    {
+                        "type": "array",
+                        "items": {"type": "string"}
+                    },
+                    {"type": "string"}
+                ]
+            }
+        }
+    }
+
     return {
         "type": "object",
         "properties": {
@@ -143,6 +161,10 @@ def _rasa_nlu_data_schema():
                     "entity_examples": {
                         "type": "array",
                         "items": training_example_schema
+                    },
+                    "lookup_tables": {
+                        "type": "array",
+                        "items": lookup_table_schema
                     }
                 }
             }

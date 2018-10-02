@@ -90,6 +90,7 @@ registered_pipeline_templates = {
     "tensorflow_embedding": [
         "tokenizer_whitespace",
         "ner_crf",
+        "ner_synonyms",
         "intent_featurizer_count_vectors",
         "intent_classifier_tensorflow_embedding"
     ]
