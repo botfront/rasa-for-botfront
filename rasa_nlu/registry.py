@@ -19,6 +19,7 @@ from rasa_nlu.preprocessors.spell_check import BingSpellCheck
 from rasa_nlu.postprocessors.duckling_crf_merger import DucklingCrfMerger
 from rasa_nlu.postprocessors.entities_filter import EntitiesFilter
 from rasa_nlu.postprocessors.fuzzy_gazette import FuzzyGazette
+from rasa_nlu.postprocessors.api_log import ApiLog
 from rasa_nlu.classifiers.keyword_intent_classifier import \
     KeywordIntentClassifier
 from rasa_nlu.classifiers.mitie_intent_classifier import MitieIntentClassifier
@@ -65,7 +66,7 @@ component_classes = [
     SklearnIntentClassifier, MitieIntentClassifier, KeywordIntentClassifier,
     EmbeddingIntentClassifier,
     DucklingCrfMerger,
-    EntitiesFilter, FuzzyGazette, BingSpellCheck
+    EntitiesFilter, FuzzyGazette, BingSpellCheck, ApiLog
 ]
 
 # Mapping from a components name to its class to allow name based lookup.
