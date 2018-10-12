@@ -14,7 +14,7 @@ def _get_instance(config=None, gazette=None):
         config = {"entities":[{"name": "type"}]}
 
     if gazette is None:
-        gazette = {"type": ["chinese", "something totally different"], "city": ["New York"]}
+        gazette = {"type": ["chinese", "restaurant", "something totally different"], "city": ["New York"]}
 
     return FuzzyGazette(component_config=config, gazette=gazette)
 
@@ -58,11 +58,15 @@ def _test_entity(entity, expected_value, expected_matches):
         assert raises(KeyError, lambda x: x["gazette_matches"], entity)
 
 
+def _assert_missing_entities(entities):
+    assert len(entities) == 2
+
+
 def test_fuzzy_matching():
     example = _get_example()
 
     # test the changed entity
-    _test_entity(example.data["entities"][0], "chinese", 2)
+    _test_entity(example.data["entities"][0], "chinese", 3)
 
     # test unchanged entity
     _test_entity(example.data["entities"][2], "New York", 0)
@@ -81,20 +85,9 @@ def test_extra_matches():
 
 
 def test_no_show():
-    example = _get_example()
+    example = _get_example(gazette={"type": ["chinese", "something totally different"], "city": ["New York"]})
 
-    _test_entity(example.data["entities"][1], "restaurant", 0)
-
-
-def test_extractor_condition():
-    example= _get_example(primary={
-            "entity": "type",
-            "value": "chines",
-            "start": 14,
-            "end": 20,
-        })
-
-    _test_entity(example.data["entities"][0], "chines", 0)
+    _assert_missing_entities(example.data["entities"])
 
 
 def test_mode_specification():
@@ -104,8 +97,8 @@ def test_mode_specification():
     example = _get_example(config={"entities": [{"name": "type", "mode": "partial_ratio"}]}, gazette={"type": ["chinese"]})
     _test_entity(example.data["entities"][0], "chinese", 1)
 
-    example = _get_example(config={"entities": [{"name": "type", "mode": "ratio"}]}, gazette={"type": ["chinese and a whole bunch of other stuff"]})
-    _test_entity(example.data["entities"][0], "chines", 0)
+    example = _get_example(config={"entities": [{"name": "type", "mode": "ratio"}]}, gazette={"type": ["chinese and a whole bunch of other stuff", "restaurant"]})
+    _assert_missing_entities(example.data["entities"])
 
     example = _get_example(config={"entities": [{"name": "type", "mode": "partial_ratio"}]}, gazette={"type": ["chinese and a whole bunch of other stuff"]})
     _test_entity(example.data["entities"][0], "chinese and a whole bunch of other stuff", 1)

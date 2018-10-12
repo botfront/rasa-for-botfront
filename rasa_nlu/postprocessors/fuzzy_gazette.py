@@ -38,7 +38,6 @@ class FuzzyGazette(Component):
     provides = ["entities"]
 
     defaults = {
-        "extractors": ["ner_crf"],
         "max_num_suggestions": 5,
         "entities": [],
     }
@@ -56,23 +55,24 @@ class FuzzyGazette(Component):
         entities = message.get("entities", [])
         limit = self.component_config.get("max_num_suggestions")
 
+        new_entities = []
         for entity in entities:
-            right_extractor = "extractor" in entity and entity["extractor"] in self.component_config["extractors"]
             config = _find_entity_config(entity, self.component_config)
-
-            if not isinstance(entity["value"], str) or not right_extractor or config is None:
+            if config is None or not isinstance(entity["value"], str):
+                new_entities.append(entity)
                 continue
 
             matches = process.extract(entity["value"], self.gazette.get(entity["entity"], []), limit=limit, scorer=getattr(fuzz, config["mode"]))
             matches.sort(key=lambda x: x[1])
 
-            primary, score = matches[-1] if len(matches) else (None, None, None)
+            primary, score = matches[-1] if len(matches) else (None, None)
 
             if primary is not None and score > config["min_score"]:
                 entity["value"] = primary
                 entity["gazette_matches"] = [{"value": value, "score": num} for value, num in matches]
+                new_entities.append(entity)
 
-        message.set("entities", entities)
+        message.set("entities", new_entities)
 
     def train(self, training_data, config, **kwargs):
         # type: (TrainingData, RasaNLUModelConfig, **Any) -> None
