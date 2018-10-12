@@ -11,8 +11,6 @@ class ApiLog(Component):
 
     defaults = {
         'url': '0.0.0.0',
-        'model': None,
-        'project': None,
     }
 
     def __init__(self, component_config=None):
@@ -23,12 +21,15 @@ class ApiLog(Component):
         # type: (Message, **Any) -> None
 
         session = FuturesSession()
+        params = kwargs.get('request_params', None)
+        if params is None:
+            return
+
+        if 'model' not in params or params.get('nolog', 'false') not in ['false', '0', '']:
+            return
 
         output = self._message_dict(message)
-        model = self.component_config.get('model', False)
-        if model:
-            output['modelId'] = model
-
+        output['modelId'] = params.get('model')
 
         session.post(self.component_config.get('url'), json=output)
 

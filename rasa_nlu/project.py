@@ -239,7 +239,7 @@ class Project(object):
         logger.warn("Invalid model requested. Using default")
         return self._latest_project_model()
 
-    def parse(self, text, time=None, requested_model_name=None):
+    def parse(self, text, time=None, requested_model_name=None, request_params=None):
         self._begin_read()
 
         model_name = self._dynamic_load_model(requested_model_name)
@@ -252,7 +252,7 @@ class Project(object):
         finally:
             self._loader_lock.release()
 
-        response = self._models[model_name].parse(text, time)
+        response = self._models[model_name].parse(text, time, request_params=request_params)
         response['project'] = self._project
         response['model'] = model_name
 
