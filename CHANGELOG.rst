@@ -4,24 +4,57 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning`_ starting with version 0.7.0.
 
-[Unreleased 0.13.0.aX] - `master`_
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. note:: This version is not yet released and is under active development.
-
-Added
------
-
-Changed
--------
-
-Removed
--------
+[0.13.7] - 2018-10-11
+^^^^^^^^^^^^^^^^^^^^^
 
 Fixed
 -----
+- ``rasa_nlu.server`` allowed more than ``max_training_processes``
+  to be trained if they belong to different projects.
+  ``max_training_processes`` is now a global parameter, regardless of what
+  project the training process belongs to.
 
-[0.13.3] - 2018-09-28
+
+[0.13.6] - 2018-10-04
+^^^^^^^^^^^^^^^^^^^^^
+
+Changed
+-------
+- ``boto3`` is now loaded lazily in ``AWSPersistor`` and is not
+  included in ``requirements_bare.txt`` anymore
+
+Fixed
+-----
+- Allow training of pipelines containing ``EmbeddingIntentClassifier`` in
+  a separate thread on python 3. This makes http server calls to ``/train``
+  non-blocking
+- require ``scikit-learn<0.20`` in setup py to avoid corrupted installations
+  with the most recent scikit learn
+
+
+[0.13.5] - 2018-09-28
+^^^^^^^^^^^^^^^^^^^^^
+
+Changed
+-------
+- Training data is now validated after loading from files in ``loading.py`` instead of on initialisation of
+  ``TrainingData`` object
+
+Fixed
+-----
+- ``Project`` set up to pull models from a remote server only use
+  the pulled model instead of searching for models locally
+
+[0.13.4] - 2018-09-19
+^^^^^^^^^^^^^^^^^^^^^
+
+Fixed
+-----
+- pinned matplotlib to 2.x (not ready for 3.0 yet)
+- pytest-services since it wasn't used and caused issues on Windows
+
+[0.13.3] - 2018-08-28
 ^^^^^^^^^^^^^^^^^^^^^
 
 Added

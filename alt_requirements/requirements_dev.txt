@@ -5,7 +5,6 @@
 # test
 python-coveralls==2.9.1
 pytest-pep8==1.0.6
-pytest-services==1.2.1
 pytest-cov==2.5.1
 pytest-twisted==1.6
 pytest==3.3.2
@@ -17,3 +16,4 @@ httpretty==0.9.5
 # other
 google-cloud-storage==1.7.0
 azure-storage-blob==1.0.0
+boto3==1.5.20

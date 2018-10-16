@@ -16,7 +16,6 @@ with io.open(os.path.join(here, 'README.md'), encoding='utf-8') as f:
 tests_requires = [
     "pytest",
     "pytest-pep8",
-    "pytest-services",
     "pytest-cov",
     "pytest-twisted<1.6",
     "treq",
@@ -37,7 +36,7 @@ install_requires = [
     "tqdm",
     "requests",
     "jsonschema",
-    "matplotlib",
+    "matplotlib~=2.0",
     "numpy>=1.13",
     "simplejson",
     "pyyaml",
@@ -46,12 +45,12 @@ install_requires = [
 
 extras_requires = {
     'test': tests_requires,
-    'spacy': ["scikit-learn",
+    'spacy': ["scikit-learn<0.20",
               "sklearn-crfsuite",
               "scipy",
               "spacy>2.0",
               ],
-    'tensorflow': ["scikit-learn",
+    'tensorflow': ["scikit-learn<0.20",
                    "sklearn-crfsuite",
                    "scipy",
                    "tensorflow"
@@ -100,5 +99,5 @@ setup(
 
 print("\nWelcome to Rasa NLU!")
 print("If any questions please visit documentation "
-      "page https://nlu.rasa.com")
-print("or join community chat on https://gitter.im/RasaHQ/rasa_nlu")
+      "page https://rasa.com/docs/nlu/")
+print("or join the community discussions on https://forum.rasa.com")
