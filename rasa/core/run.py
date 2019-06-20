@@ -186,7 +186,7 @@ async def load_agent_on_start(
             _interpreters[lang] = NaturalLanguageInterpreter.create(nlu_model_path)
     except Exception:
         logger.debug("Could not load interpreter from '{}'".format(model_path))
-        _interpreter = None
+        _interpreters = None
 
     _broker = broker.from_endpoint_config(endpoints.event_broker)
     _tracker_store = TrackerStore.find_tracker_store(
