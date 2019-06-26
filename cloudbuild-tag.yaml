@@ -22,5 +22,7 @@ steps:
 - name: 'gcr.io/cloud-builders/docker'
   args: [ "push", "botfront/rasa-for-botfront:$TAG_NAME"]
 
+- name: 'gcr.io/cloud-builders/docker'
+  args: [ "push", "botfront/rasa-for-botfront:latest"]
 
 timeout: 1800s
