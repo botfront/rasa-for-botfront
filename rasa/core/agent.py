@@ -221,18 +221,7 @@ async def load_agent(
     action_endpoint: Optional[EndpointConfig] = None,
 ):
     try:
-        if model_path is not None and os.path.exists(model_path):
-            return Agent.load_local_model(
-                model_path,
-                interpreters=interpreters,
-                generator=generator,
-                tracker_store=tracker_store,
-                action_endpoint=action_endpoint,
-                model_server=model_server,
-                remote_storage=remote_storage,
-            )
-
-        elif model_server is not None:
+        if model_server is not None:
             return await load_from_server(
                 Agent(
                     interpreters=interpreters,
@@ -256,6 +245,17 @@ async def load_agent(
                 model_server=model_server,
             )
 
+        elif model_path is not None and os.path.exists(model_path):
+            return Agent.load_local_model(
+                model_path,
+                interpreters=interpreters,
+                generator=generator,
+                tracker_store=tracker_store,
+                action_endpoint=action_endpoint,
+                model_server=model_server,
+                remote_storage=remote_storage,
+            )
+
         else:
             logger.warning("No valid configuration given to load agent.")
             return None
@@ -263,7 +263,6 @@ async def load_agent(
     except Exception as e:
         logger.error("Could not load model due to {}.".format(e))
         raise
-
 
 class Agent(object):
     """The Agent class provides a convenient interface for the most important
