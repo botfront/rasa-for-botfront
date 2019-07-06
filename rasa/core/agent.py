@@ -67,16 +67,21 @@ def _load_and_set_updated_model(
 
     logger.debug("Found new model with fingerprint {}. Loading...".format(fingerprint))
 
-    core_path, nlu_path = get_model_subdirectories(model_directory)
+    core_path, nlu_models = get_model_subdirectories(model_directory)
 
-    if os.path.exists(nlu_path):
-        from rasa.core.interpreter import RasaNLUInterpreter
-
-        interpreter = RasaNLUInterpreter(model_directory=nlu_path)
+    interpreters = {}
+    # If NLU models exist then create interpreters from them
+    if len(nlu_models):
+        for lang, model_path in nlu_models.items():
+            interpreters[lang] = NaturalLanguageInterpreter.create(os.path.join(model_directory, model_path))
+    # If no NLU models exist, then associate a RegexInterpreter to the language code found in the fingerprints,
+    # that should correspond to the default language in Botfront. This is to make sure an interpreter is available
+    # when training stories without NLU
     else:
-        interpreter = (
-            agent.interpreter if agent.interpreter is not None else RegexInterpreter()
-        )
+        from rasa.model import fingerprint_from_path, FINGERPRINT_CONFIG_NLU_KEY
+        models_fingerprint = fingerprint_from_path(model_directory)
+        if len(models_fingerprint.get(FINGERPRINT_CONFIG_NLU_KEY).keys()):
+            interpreters = {list(models_fingerprint.get(FINGERPRINT_CONFIG_NLU_KEY).keys())[0]: RegexInterpreter()}
 
     domain = None
     if os.path.exists(core_path):
@@ -88,7 +93,7 @@ def _load_and_set_updated_model(
         if os.path.exists(core_path):
             policy_ensemble = PolicyEnsemble.load(core_path)
         agent.update_model(
-            domain, policy_ensemble, fingerprint, interpreter, model_directory
+            domain, policy_ensemble, fingerprint, interpreters, model_directory
         )
         logger.debug("Finished updating agent to new model.")
     except Exception:
@@ -105,6 +110,7 @@ async def _update_model_from_server(
 
     if not is_url(model_server.url):
         raise aiohttp.InvalidURL(model_server.url)
+
 
     model_directory_and_fingerprint = await _pull_model_and_fingerprint(
         model_server, agent.fingerprint
@@ -319,7 +325,9 @@ class Agent(object):
         self.policy_ensemble = policy_ensemble
 
         if interpreters:
-            self.interpreters = NaturalLanguageInterpreter.create(interpreters)
+            self.interpreters = {}
+            for lang in interpreters.keys():
+                self.interpreters[lang] = NaturalLanguageInterpreter.create(interpreters[lang])
 
         self._set_fingerprint(fingerprint)
 
