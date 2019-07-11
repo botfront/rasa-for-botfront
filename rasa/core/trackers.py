@@ -1,6 +1,6 @@
 import copy
 import logging
-from collections import deque, defaultdict
+from collections import deque
 from enum import Enum
 from typing import Dict, Text, Any, Optional, Iterator, Generator, Type, List
 
@@ -52,6 +52,9 @@ class AnySlotDict(dict):
     def __missing__(self, key):
         value = self[key] = Slot(key)
         return value
+
+    def __contains__(self, key):
+        return True
 
 
 class DialogueStateTracker(object):

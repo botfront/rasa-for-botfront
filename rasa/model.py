@@ -15,11 +15,12 @@ from rasa.constants import (
     CONFIG_MANDATORY_KEYS,
 )
 
-# Type alias for the fingerprint
-from rasa.core import config
 from rasa.core.domain import Domain
 from rasa.core.utils import get_dict_hash
+from rasa.exceptions import ModelNotFound
+from rasa.utils.common import TempDirectoryPath
 
+# Type alias for the fingerprint
 Fingerprint = Dict[Text, Union[Text, List[Text], int, float]]
 
 logger = logging.getLogger(__name__)
@@ -36,8 +37,9 @@ FINGERPRINT_NLU_DATA_KEY = "messages"
 FINGERPRINT_TRAINED_AT_KEY = "trained_at"
 
 
-def get_model(model_path: Text = DEFAULT_MODELS_PATH) -> Optional[Text]:
-    """Gets a model and unpacks it.
+def get_model(model_path: Text = DEFAULT_MODELS_PATH) -> TempDirectoryPath:
+    """Gets a model and unpacks it. Raises a `ModelNotFound` exception if
+    no model could be found at the provided path.
 
     Args:
         model_path: Path to the zipped model. If it's a directory, the latest
@@ -48,16 +50,22 @@ def get_model(model_path: Text = DEFAULT_MODELS_PATH) -> Optional[Text]:
 
     """
     if not model_path:
-        return None
+        raise ModelNotFound("No path specified.")
     elif not os.path.exists(model_path):
-        return None
-    elif os.path.isdir(model_path):
+        raise ModelNotFound("No file or directory at '{}'.".format(model_path))
+
+    if os.path.isdir(model_path):
         model_path = get_latest_model(model_path)
+        if not model_path:
+            raise ModelNotFound(
+                "Could not find any Rasa model files in '{}'.".format(model_path)
+            )
+    elif not model_path.endswith(".tar.gz"):
+        raise ModelNotFound(
+            "Path '{}' does not point to a Rasa model file.".format(model_path)
+        )
 
-    if model_path:
-        return unpack_model(model_path)
-
-    return None
+    return unpack_model(model_path)
 
 
 def get_latest_model(model_path: Text = DEFAULT_MODELS_PATH) -> Optional[Text]:
@@ -81,7 +89,9 @@ def get_latest_model(model_path: Text = DEFAULT_MODELS_PATH) -> Optional[Text]:
     return max(list_of_files, key=os.path.getctime)
 
 
-def unpack_model(model_file: Text, working_directory: Optional[Text] = None) -> Text:
+def unpack_model(
+    model_file: Text, working_directory: Optional[Text] = None
+) -> TempDirectoryPath:
     """Unpacks a zipped Rasa model.
 
     Args:
@@ -108,7 +118,7 @@ def unpack_model(model_file: Text, working_directory: Optional[Text] = None) -> 
     tar.close()
     logger.debug("Extracted model to '{}'.".format(working_directory))
 
-    return working_directory
+    return TempDirectoryPath(working_directory)
 
 
 def get_model_subdirectories(unpacked_model_path: Text) -> Tuple[Text, Dict[Text, Text]]:
@@ -399,20 +409,25 @@ def should_retrain(new_fingerprint: Fingerprint, old_model: Text, train_path: Te
     if old_model is None or not os.path.exists(old_model):
         return retrain_core, retrain_nlu
 
-    unpacked = unpack_model(old_model)
-    last_fingerprint = fingerprint_from_path(unpacked)
+    with unpack_model(old_model) as unpacked:
+        last_fingerprint = fingerprint_from_path(unpacked)
 
-    old_core, old_nlu = get_model_subdirectories(unpacked)
+        old_core, old_nlu = get_model_subdirectories(unpacked)
 
-    if not core_fingerprint_changed(last_fingerprint, new_fingerprint):
-        target_path = os.path.join(train_path, "core")
-        retrain_core = not merge_model(old_core, target_path)
+        if not core_fingerprint_changed(last_fingerprint, new_fingerprint):
+            target_path = os.path.join(train_path, "core")
+            retrain_core = not merge_model(old_core, target_path)
 
-    # bf: copy existing NLU models for languages not needing to be retrained
-    languages_to_train = nlu_fingerprint_changed(last_fingerprint, new_fingerprint)
-    for lang in old_nlu.keys():
-        target_path = os.path.join(train_path, "nlu-{}".format(lang))
-        if not merge_model(old_nlu.get(lang), target_path):
-            languages_to_train.append(lang)
+        # bf: copy existing NLU models for languages not needing to be retrained
+        languages_to_train = nlu_fingerprint_changed(last_fingerprint, new_fingerprint)
+        for lang in old_nlu.keys():
+            target_path = os.path.join(train_path, "nlu-{}".format(lang))
+            if not merge_model(old_nlu.get(lang), target_path):
+                languages_to_train.append(lang)
 
-    return retrain_core, languages_to_train
+        return retrain_core, languages_to_train
+        if not nlu_fingerprint_changed(last_fingerprint, new_fingerprint):
+            target_path = os.path.join(train_path, "nlu")
+            retrain_nlu = not merge_model(old_nlu, target_path)
+
+        return retrain_core, retrain_nlu
