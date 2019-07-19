@@ -823,13 +823,21 @@ def create_app(
 
         try:
             data = emulator.normalise_request_json(request.json)
-            # bf: get query args
-            parse_data = await app.agent.interpreters.get(
-                request.json.get("lang")).parse(
-                    data.get("text"), data.get("message_id"), params=dict(request.query_args)
+            try:
+                # bf: get query args
+                parsed_data = await app.agent.interpreters.get(
+                    request.json.get("lang")).parse(
+                        data.get("text"), data.get("message_id"), params=dict(request.query_args)
+                    )
+                # bf: end
+            except Exception as e:
+                logger.debug(traceback.format_exc())
+                raise ErrorResponse(
+                    400,
+                    "ParsingError",
+                    "An unexpected error occurred. Error: {}".format(e),
                 )
-            # bf: end
-            response_data = emulator.normalise_response_json(parse_data)
+            response_data = emulator.normalise_response_json(parsed_data)
 
             return response.json(response_data)
 
