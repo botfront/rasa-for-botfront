@@ -314,7 +314,7 @@ def create_app(
     @app.get("/")
     async def hello(request: Request):
         """Check if the server is running and responds with the version."""
-        return response.text("Hello from Rasa: " + rasa.__version__)
+        return response.text("Hello from Rasa: " + rasa.__version__ + rasa.version.__bf_patch__)
 
     @app.get("/version")
     async def version(request: Request):

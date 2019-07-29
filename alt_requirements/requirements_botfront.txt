@@ -1,2 +1,3 @@
-rasa-addons==0.6.2
+#rasa-addons==0.6.2
+git+https://github.com/botfront/rasa-addons@cors-fix
 jieba==0.39
