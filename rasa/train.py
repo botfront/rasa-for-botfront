@@ -131,7 +131,7 @@ def handle_domain_if_not_exists(
 
 async def _train_async_internal(
     domain: Union[Domain, Text],
-    config: Text,
+    config: Dict[Text, Text],
     train_path: Text,
     nlu_data_directory: Text,
     story_directory: Text,

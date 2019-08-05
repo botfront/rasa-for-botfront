@@ -149,7 +149,88 @@ def test_nlu_fingerprint_not_changed(fingerprint2):
 )
 def test_nlu_fingerprint_changed_all(fingerprint2):
     fingerprint1 = _fingerprint()
-    assert nlu_fingerprint_changed(fingerprint1, fingerprint2) == ["en", "fr"]
+    assert sorted(nlu_fingerprint_changed(fingerprint1, fingerprint2)) == ["en", "fr"]
+
+
+@pytest.mark.parametrize(
+    "fingerprint",
+    [
+        {
+            "new": _fingerprint(nlu={"en": "test_en", "fr": "test_fr_changed"}),
+            "old": _fingerprint(),
+            "retrain_nlu": ["fr"],
+        },
+        {
+            "new": _fingerprint(nlu={"en": "test_en_changed", "fr": "test_fr_changed"}),
+            "old": _fingerprint(),
+            "retrain_nlu": ["en", "fr"],
+        },
+        {
+            "new": _fingerprint(nlu={"en": "test_en_changed", "fr": "test_fr"}),
+            "old": _fingerprint(),
+            "retrain_core": False,
+            "retrain_nlu": ["en"],
+        },
+        {
+            "new": _fingerprint(config_nlu={"en": "test_en", "fr": "test_fr_changed"}),
+            "old": _fingerprint(),
+            "retrain_nlu": ["fr"],
+        },
+        {
+            "new": _fingerprint(config_nlu={"en": "test_en_changed", "fr": "test_fr_changed"}),
+            "old": _fingerprint(),
+            "retrain_nlu": ["en", "fr"],
+        },
+        {
+            "new": _fingerprint(config_nlu={"en": "test_en_changed", "fr": "test_fr"}),
+            "old": _fingerprint(),
+            "retrain_nlu": ["en"],
+        },
+        {
+            "new": _fingerprint(),
+            "old": _fingerprint(),
+            "retrain_nlu": [],
+        },
+        {
+            "new": _fingerprint(nlu={"en": "test_en", "fr": "test_fr_changed"}),
+            "old": _fingerprint(nlu={}, config_nlu={}),
+            "retrain_nlu": ["en", "fr"],
+        },
+        {
+            "new": _fingerprint(nlu={}),
+            "old": _fingerprint(nlu={"en": "test_en", "fr": "test_fr_changed"}),
+            "retrain_nlu": ["en", "fr"],
+        },
+        {
+            "old": _fingerprint(nlu={}, config_nlu={}),
+            "new": _fingerprint(nlu={"en": "test_en"}, config_nlu={"en": "test_en"}),
+            "retrain_nlu": ["en"],
+        },
+        {
+            "old": _fingerprint(nlu={"en": "test_en"}, config_nlu={"en": "test_en"}),
+            "new": _fingerprint(nlu={"en": "test_en", "fr": "test_fr_changed"}, config_nlu={"en": "test_en", "fr": "test_fr_changed"}),
+            "retrain_nlu": ["fr"],
+        },
+        {
+            "new": _fingerprint(nlu={"en": "test_en_changed", "fr": "test_fr"}, config_nlu={"en": "test_en", "fr": "test_fr"}),
+            "old": _fingerprint(nlu={"en": "test_en", "fr": "test_fr"}, config_nlu={"en": "test_en", "fr": "test_fr"}),
+            "retrain_nlu": ["en"],
+        },
+        {
+            "old": _fingerprint(config='', config_nlu={}, nlu={}),
+            "new": _fingerprint(config='', config_nlu={'en': 'e50f96c444c3804c4bb249b8a802948b'}, nlu={'en': 'asdasdasdasd'}),
+            "retrain_nlu": ["en"],
+        }
+        # {
+        #     "old": _fingerprint(config_nlu={"en": "en"}, nlu={}),
+        #     "new": _fingerprint(config_nlu={"en": "en"}, nlu={"en": "test_en"}),
+        #     "retrain_core": False,
+        #     "retrain_nlu": ["en"],
+        # },
+    ],
+)
+def test_nlu_fingerprint_languages_changed(fingerprint):
+    assert sorted(nlu_fingerprint_changed(fingerprint["old"], fingerprint["new"])) == fingerprint["retrain_nlu"]
 
 
 @pytest.mark.parametrize(
@@ -311,7 +392,7 @@ def test_rasa_packaging(trained_model, project, use_fingerprint):
         },
         {
             "new": _fingerprint(nlu={"en": "test_en", "fr": "test_fr_changed"}),
-            "old": _fingerprint(nlu={}),
+            "old": _fingerprint(nlu={}, config_nlu={}),
             "retrain_core": False,
             "retrain_nlu": ["en", "fr"],
         },
@@ -322,35 +403,29 @@ def test_rasa_packaging(trained_model, project, use_fingerprint):
             "retrain_nlu": ["en", "fr"],
         },
         {
-            "new": _fingerprint(nlu={}),
-            "old": _fingerprint(nlu={"en": "test_en"}),
+            "old": _fingerprint(nlu={}, config_nlu={}),
+            "new": _fingerprint(nlu={"en": "test_en"}, config_nlu={"en": "test_en"}),
             "retrain_core": False,
             "retrain_nlu": ["en"],
         },
         {
-            "new": _fingerprint(nlu={"en": "test_en"}),
-            "old": _fingerprint(nlu={"en": "test_en", "fr": "test_fr_changed"}),
+            "old": _fingerprint(nlu={"en": "test_en"}, config_nlu={"en": "test_en"}),
+            "new": _fingerprint(nlu={"en": "test_en", "fr": "test_fr_changed"}, config_nlu={"en": "test_en", "fr": "test_fr_changed"}),
             "retrain_core": False,
             "retrain_nlu": ["fr"],
         },
         {
-            "new": _fingerprint(nlu={"en": "test_en", "fr": "test_fr"}),
-            "old": _fingerprint(nlu={"en": "test_en_changed"}),
+            "new": _fingerprint(nlu={"en": "test_en_changed", "fr": "test_fr"}, config_nlu={"en": "test_en", "fr": "test_fr"}),
+            "old": _fingerprint(nlu={"en": "test_en", "fr": "test_fr"}, config_nlu={"en": "test_en", "fr": "test_fr"}),
             "retrain_core": False,
             "retrain_nlu": ["en"],
         },
-        {
-            "old": _fingerprint(config_nlu={"en": "en"}, nlu={}),
-            "new": _fingerprint(config_nlu={"en": "en"}, nlu={"en": "test_en"}),
-            "retrain_core": False,
-            "retrain_nlu": ["en"],
-        },
-        {
-            "old": _fingerprint(config_nlu={"en": "en"}, nlu={}),
-            "new": _fingerprint(config_nlu={"en": "en"}, nlu={"en": "test_en"}),
-            "retrain_core": False,
-            "retrain_nlu": ["en"],
-        },
+        # {
+        #     "old": _fingerprint(config_nlu={"en": "en"}, nlu={}),
+        #     "new": _fingerprint(config_nlu={"en": "en"}, nlu={"en": "test_en"}),
+        #     "retrain_core": False,
+        #     "retrain_nlu": ["en"],
+        # },
     ],
 )
 def test_should_retrain(trained_model, fingerprint):

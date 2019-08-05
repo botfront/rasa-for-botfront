@@ -348,9 +348,15 @@ def nlu_fingerprint_changed(
         FINGERPRINT_NLU_DATA_KEY,
         FINGERPRINT_RASA_VERSION_KEY,
     ]
-    all_languages = list(fingerprint1.get(FINGERPRINT_NLU_DATA_KEY).keys())
-    languages_in_new_model = set(fingerprint2.get(FINGERPRINT_NLU_DATA_KEY).keys())
-    languages_in_old_model = set(fingerprint1.get(FINGERPRINT_NLU_DATA_KEY).keys())
+    all_languages = set(list(fingerprint1.get(FINGERPRINT_NLU_DATA_KEY).keys()) +
+                        list(fingerprint1.get(FINGERPRINT_CONFIG_NLU_KEY).keys()) +
+                        list(fingerprint2.get(FINGERPRINT_NLU_DATA_KEY).keys()) +
+                        list(fingerprint2.get(FINGERPRINT_CONFIG_NLU_KEY).keys()))
+
+    languages_in_new_model = set(list(fingerprint2.get(FINGERPRINT_NLU_DATA_KEY).keys()) +
+                                 list(fingerprint2.get(FINGERPRINT_CONFIG_NLU_KEY).keys()))
+    languages_in_old_model = set(list(fingerprint1.get(FINGERPRINT_NLU_DATA_KEY).keys()) +
+                                 list(fingerprint1.get(FINGERPRINT_CONFIG_NLU_KEY).keys()))
     languages_added = list(languages_in_new_model - languages_in_old_model)
     languages_removed = list(languages_in_old_model - languages_in_new_model)
     languages_to_retrain = set()
@@ -358,7 +364,7 @@ def nlu_fingerprint_changed(
         if not isinstance(fingerprint1.get(k), dict):
             if fingerprint1.get(k) != fingerprint2.get(k):
                 logger.info("Data ({}) for NLU model changed.".format(k))
-                return all_languages
+                return list(all_languages)
         else:
             for lang in fingerprint1.get(k).keys():
                 if fingerprint1.get(k).get(lang) != fingerprint2.get(k).get(lang):
@@ -426,8 +432,4 @@ def should_retrain(new_fingerprint: Fingerprint, old_model: Text, train_path: Te
                 languages_to_train.append(lang)
 
         return retrain_core, languages_to_train
-        if not nlu_fingerprint_changed(last_fingerprint, new_fingerprint):
-            target_path = os.path.join(train_path, "nlu")
-            retrain_nlu = not merge_model(old_nlu, target_path)
 
-        return retrain_core, retrain_nlu
