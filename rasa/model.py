@@ -207,6 +207,8 @@ def model_fingerprint(
     # botfront: multilingual fingerprints
     # nlu config and data have per language hash (dict)
     nlu_files = list(os.path.join(nlu_data, file) for file in os.listdir(nlu_data)) if nlu_data else []
+    nlu_languages = list(file.split('.')[0][-2:] for file in nlu_files)
+    nlu_configs = {lang: config_files[lang] for lang in nlu_languages}
     from rasa.core.utils import get_file_hash
 
     return {
@@ -217,7 +219,7 @@ def model_fingerprint(
             config_files[list(config_files.keys())[0]], include_keys=CONFIG_MANDATORY_KEYS_CORE
         ),
         FINGERPRINT_CONFIG_NLU_KEY: {key: _get_hash_of_config(value, include_keys=CONFIG_MANDATORY_KEYS_NLU)
-                                     for (key, value) in config_files.items()},
+                                     for (key, value) in nlu_configs.items()},
         FINGERPRINT_DOMAIN_KEY: domain_hash,
         FINGERPRINT_NLU_DATA_KEY: {file.split('.')[0][-2:]: get_file_hash(file)
                                    for file in nlu_files},
