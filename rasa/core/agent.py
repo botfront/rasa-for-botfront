@@ -307,7 +307,7 @@ class Agent(object):
                 "FormPolicy to your policy ensemble."
             )
 
-        self.interpreters = interpreters
+        self.interpreters = interpreters or RegexInterpreter()
 
         self.nlg = NaturalLanguageGenerator.create(generator, self.domain)
         self.tracker_store = self.create_tracker_store(tracker_store, self.domain)

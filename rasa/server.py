@@ -825,8 +825,14 @@ def create_app(
             data = emulator.normalise_request_json(request.json)
             try:
                 # bf: get query args
-                parsed_data = await app.agent.interpreters.get(
-                    request.json.get("lang")).parse(
+                from rasa.core.interpreter import NaturalLanguageInterpreter
+                if isinstance(app.agent.interpreters, dict):
+                    parsed_data = await app.agent.interpreters.get(
+                        request.json.get("lang")).parse(
+                            data.get("text"), data.get("message_id"), params=dict(request.query_args)
+                        )
+                elif isinstance(app.agent.interpreters, NaturalLanguageInterpreter):
+                    parsed_data = await app.agent.interpreters.parse(
                         data.get("text"), data.get("message_id"), params=dict(request.query_args)
                     )
                 # bf: end
