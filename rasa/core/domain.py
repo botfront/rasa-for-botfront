@@ -110,7 +110,7 @@ class Domain(object):
 
     @classmethod
     def from_dict(cls, data: Dict) -> "Domain":
-        utter_templates = cls.collect_templates(data.get("templates", {}))
+        utter_templates = cls.collect_bf_templates(data.get("templates", {}))
         slots = cls.collect_slots(data.get("slots", {}))
         additional_arguments = data.get("config", {})
         intents = data.get("intents", {})
@@ -237,6 +237,15 @@ class Domain(object):
 
             intent_properties.update(intent)
         return intent_properties
+
+    @staticmethod
+    def collect_bf_templates(
+        yml_templates: Dict[Text, Dict[Text, List[List[Any]]]]
+    ) -> Dict[Text, Dict[Text, List[List[Dict[Text, Any]]]]]:
+        """template name -> lang -> sequence of templates
+        Placeholder for actual validation
+        """
+        return yml_templates
 
     @staticmethod
     def collect_templates(
