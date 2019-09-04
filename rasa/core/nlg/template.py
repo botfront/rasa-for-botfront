@@ -2,6 +2,7 @@ import copy
 import logging
 import re
 from collections import defaultdict
+from rasa.cli.utils import bcolors
 
 from rasa.core.trackers import DialogueStateTracker
 from typing import Text, Any, Dict, Optional, List
@@ -10,6 +11,12 @@ from rasa.core.nlg.generator import NaturalLanguageGenerator
 
 logger = logging.getLogger(__name__)
 
+class InvalidNLGRequest(Exception):
+    def __init__(self, message):
+        self.message = message
+
+    def __str__(self):
+        return bcolors.FAIL + self.message + bcolors.ENDC
 
 class TemplatedNaturalLanguageGenerator(NaturalLanguageGenerator):
     """Natural language generator that generates messages based on templates.
@@ -17,7 +24,7 @@ class TemplatedNaturalLanguageGenerator(NaturalLanguageGenerator):
     The templates can use variables to customize the utterances based on the
     state of the dialogue."""
 
-    def __init__(self, templates: Dict[Text, List[Dict[Text, Any]]]) -> None:
+    def __init__(self, templates: Dict[Text, Dict[Text, List[List[Dict[Text, Any]]]]]) -> None:
         self.templates = templates
 
     def _templates_for_utter_action(self, utter_action, output_channel):
@@ -71,9 +78,27 @@ class TemplatedNaturalLanguageGenerator(NaturalLanguageGenerator):
         """Generate a response for the requested template."""
 
         filled_slots = tracker.current_slot_values()
-        return self.generate_from_slots(
+        return self.generate_from_bf_template(
             template_name, filled_slots, output_channel, **kwargs
         )
+
+    def generate_from_bf_template(
+        self,
+        template_name: Text,
+        filled_slots: Dict[Text, Any],
+        output_channel: Text,
+        **kwargs: Any
+    ) -> Optional[Dict[Text, Any]]:
+    
+        language = kwargs.get("language", None)
+        if not language:
+            raise InvalidNLGRequest("Generator expected a language to return template")
+        if template_name not in self.templates:
+            return None
+        
+        return [self._fill_template_text(
+            copy.deepcopy(template), filled_slots, **kwargs
+        ) for template in self.templates[template_name][language]]
 
     def generate_from_slots(
         self,

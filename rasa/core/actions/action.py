@@ -368,6 +368,8 @@ class RemoteAction(Action):
                     responses += resolved
                 else:
                     responses += [resolved]
+            else:
+                responses += [response]
 
         for response in responses:
             if "template" in response:
