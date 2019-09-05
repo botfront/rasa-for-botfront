@@ -66,7 +66,9 @@ def default_actions() -> List["Action"]:
 
 def default_action_names() -> List[Text]:
     """List default action names."""
-    return [a.name() for a in default_actions()] + list(actions_bf.keys()) # bf mod
+    # bf mod
+    return [a.name() for a in default_actions()] + list(actions_bf.keys())
+    # /bf mod
 
 
 def combine_user_with_default_actions(user_actions):
@@ -92,7 +94,9 @@ def action_from_name(
         return defaults[name]
     elif name.startswith(UTTER_PREFIX):
         return ActionUtterTemplate(name)
-    elif name in actions_bf: return actions_bf[name] # bf mod
+    # bf mod
+    elif name in actions_bf: return actions_bf[name]
+    # /bf mod
     else:
         return RemoteAction(name, action_endpoint)
 
@@ -371,6 +375,7 @@ class RemoteAction(Action):
                     responses += [resolved]
             else:
                 responses += [response]
+        # /bf mod
 
         for response in responses:
             if "template" in response:
@@ -379,6 +384,7 @@ class RemoteAction(Action):
                 draft = await nlg.generate(
                     # bf: added language kwarg
                     response["template"], tracker, output_channel.name(), **kwargs, language=output_channel.language
+                    # /bf mod
                 )
                 if not draft:
                     continue
@@ -606,4 +612,6 @@ class ActionDefaultAskRephrase(ActionUtterTemplate):
             "utter_ask_rephrase", silent_fail=True
         )
 
-from rasa_addons.core.actions import actions_bf # bf mod
+# bf mod
+from rasa_addons.core.actions import actions_bf
+# /bf mod
