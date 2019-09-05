@@ -51,4 +51,4 @@ EXPOSE 5005
 
 ENTRYPOINT ["rasa"]
 
-CMD ["--help"]
+CMD ["run", "--enable-api", "--debug"]
