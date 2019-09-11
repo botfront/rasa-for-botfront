@@ -1,5 +1,6 @@
 import argparse
 import asyncio
+import sys
 from typing import List
 
 from rasa import data
@@ -90,12 +91,17 @@ def split_nlu_data(args):
 
 
 def validate_files(args):
+    """Validate all files needed for training a model.
+
+    Fails with a non-zero exit code if there are any errors in the data."""
     from rasa.core.validator import Validator
+    from rasa.importers.rasa import RasaFileImporter
 
     loop = asyncio.get_event_loop()
-
-    story_directory, nlu_data_directory = data.get_core_nlu_directories(args.data)
-    validator = loop.run_until_complete(
-        Validator.from_files(args.domain, nlu_data_directory, story_directory)
+    file_importer = RasaFileImporter(
+        domain_path=args.domain, training_data_paths=args.data
     )
-    validator.verify_all()
+
+    validator = loop.run_until_complete(Validator.from_importer(file_importer))
+    everything_is_alright = validator.verify_all(not args.fail_on_warnings)
+    sys.exit(0) if everything_is_alright else sys.exit(1)

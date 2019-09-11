@@ -2,8 +2,9 @@ import logging
 import typing
 from typing import Dict, Text
 
+from rasa.cli.utils import print_warning
 from rasa.constants import DOCS_BASE_URL
-from rasa.cli.utils import minimal_kwargs, print_warning
+from rasa.core.lock_store import LockStore
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +34,7 @@ def run(
     import rasa.core.run
     import rasa.nlu.run
     from rasa.core.utils import AvailableEndpoints
+    import rasa.utils.common as utils
 
     _endpoints = AvailableEndpoints.read_endpoints(endpoints)
 
@@ -45,7 +47,7 @@ def run(
             "messaging-and-voice-channels".format(DOCS_BASE_URL)
         )
 
-    kwargs = minimal_kwargs(kwargs, rasa.core.run.serve_application)
+    kwargs = utils.minimal_kwargs(kwargs, rasa.core.run.serve_application)
     rasa.core.run.serve_application(
         model,
         channel=connector,
@@ -57,21 +59,23 @@ def run(
 
 def create_agent(model: Text, endpoints: Text = None) -> "Agent":
     from rasa.core.tracker_store import TrackerStore
-    from rasa.core import broker
+    import rasa.core.brokers.utils as broker_utils
     from rasa.core.utils import AvailableEndpoints
     from rasa.core.agent import Agent
 
     _endpoints = AvailableEndpoints.read_endpoints(endpoints)
 
-    _broker = broker.from_endpoint_config(_endpoints.event_broker)
+    _broker = broker_utils.from_endpoint_config(_endpoints.event_broker)
 
     _tracker_store = TrackerStore.find_tracker_store(
         None, _endpoints.tracker_store, _broker
     )
+    _lock_store = LockStore.find_lock_store(_endpoints.lock_store)
 
     return Agent.load(
         model,
         generator=_endpoints.nlg,
         tracker_store=_tracker_store,
+        lock_store=_lock_store,
         action_endpoint=_endpoints.action,
     )

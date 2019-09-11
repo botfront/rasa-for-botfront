@@ -9,17 +9,17 @@ import time
 
 from rasa.core import jobs
 from rasa.core.actions.action import Action
-from rasa.core.actions.action import (
-    ACTION_LISTEN_NAME,
-    ActionExecutionRejection,
-    UTTER_PREFIX,
-)
+from rasa.core.actions.action import ACTION_LISTEN_NAME, ActionExecutionRejection
 from rasa.core.channels.channel import (
     CollectingOutputChannel,
     UserMessage,
     OutputChannel,
 )
-from rasa.core.constants import ACTION_NAME_SENDER_ID_CONNECTOR_STR, USER_INTENT_RESTART
+from rasa.core.constants import (
+    ACTION_NAME_SENDER_ID_CONNECTOR_STR,
+    USER_INTENT_RESTART,
+    UTTER_PREFIX,
+)
 from rasa.core.domain import Domain
 from rasa.core.events import (
     ActionExecuted,
@@ -77,8 +77,17 @@ class MessageProcessor(object):
         """Handle a single message with this processor."""
 
         # preprocess message if necessary
-        tracker = await self.log_message(message)
+        tracker = await self.log_message(message, should_save_tracker=False)
         if not tracker:
+            return None
+
+        if not self.policy_ensemble or not self.domain:
+            # save tracker state to continue conversation from this state
+            self._save_tracker(tracker)
+            logger.warning(
+                "No policy ensemble or domain set. Skipping action prediction "
+                "and execution."
+            )
             return None
 
         await self._predict_and_execute_next_action(message, tracker)
@@ -102,6 +111,13 @@ class MessageProcessor(object):
             )
             return None
 
+        if not self.policy_ensemble or not self.domain:
+            # save tracker state to continue conversation from this state
+            logger.warning(
+                "No policy ensemble or domain set. Skipping action prediction "
+            )
+            return None
+
         probabilities, policy = self._get_next_action_probabilities(tracker)
         # save tracker state to continue conversation from this state
         self._save_tracker(tracker)
@@ -116,7 +132,15 @@ class MessageProcessor(object):
             "tracker": tracker.current_state(EventVerbosity.AFTER_RESTART),
         }
 
-    async def log_message(self, message: UserMessage) -> Optional[DialogueStateTracker]:
+    async def log_message(
+        self, message: UserMessage, should_save_tracker: bool = True
+    ) -> Optional[DialogueStateTracker]:
+        """Log `message` on tracker belonging to the message's conversation_id.
+
+        Optionally save the tracker if `should_save_tracker` is `True`. Tracker saving
+        can be skipped if the tracker returned by this method is used for further
+        processing and saved at a later stage.
+        """
 
         # preprocess message if necessary
         if self.message_preprocessor is not None:
@@ -126,8 +150,10 @@ class MessageProcessor(object):
         tracker = self._get_tracker(message.sender_id)
         if tracker:
             await self._handle_message_with_tracker(message, tracker)
-            # save tracker state to continue conversation from this state
-            self._save_tracker(tracker)
+
+            if should_save_tracker:
+                # save tracker state to continue conversation from this state
+                self._save_tracker(tracker)
         else:
             logger.warning(
                 "Failed to retrieve or create tracker for sender "
@@ -139,7 +165,7 @@ class MessageProcessor(object):
         self,
         sender_id: Text,
         action_name: Text,
-        output_channel: CollectingOutputChannel,
+        output_channel: OutputChannel,
         nlg: NaturalLanguageGenerator,
         policy: Text,
         confidence: float,
@@ -267,22 +293,22 @@ class MessageProcessor(object):
     def _get_action(self, action_name):
         return self.domain.action_for_name(action_name, self.action_endpoint)
 
-    async def _parse_message(self, message):
+    async def _parse_message(self, message, tracker: DialogueStateTracker = None):
         # for testing - you can short-cut the NLU part with a message
         # in the format /intent{"entity1": val1, "entity2": val2}
         # parse_data is a dict of intent & entities
         if message.text.startswith(INTENT_MESSAGE_PREFIX):
             parse_data = await RegexInterpreter().parse(
-                message.text, message.message_id
+                message.text, message.message_id, tracker
             )
         else:
             lang = message.output_channel.language
             # bf: interpreter by language or RegexInterpreter for Core only model
             from rasa.core.interpreter import NaturalLanguageInterpreter
             if isinstance(self.interpreters, dict):
-                parse_data = await self.interpreters.get(lang).parse(message.text, message.message_id)
+                parse_data = await self.interpreters.get(lang).parse(message.text, message.message_id, tracker)
             elif isinstance(self.interpreters, NaturalLanguageInterpreter):
-                parse_data = await self.interpreters.parse(message.text, message.message_id)
+                parse_data = await self.interpreters.parse(message.text, message.message_id, tracker)
             # bf: end
         logger.debug(
             "Received user message '{}' with intent '{}' "
@@ -299,7 +325,7 @@ class MessageProcessor(object):
         if message.parse_data:
             parse_data = message.parse_data
         else:
-            parse_data = await self._parse_message(message)
+            parse_data = await self._parse_message(message, tracker)
 
         # don't ever directly mutate the tracker
         # - instead pass its events to log
@@ -311,6 +337,7 @@ class MessageProcessor(object):
                 parse_data,
                 input_channel=message.input_channel,
                 message_id=message.message_id,
+                metadata=message.metadata,
             ),
             self.domain,
         )
@@ -324,7 +351,7 @@ class MessageProcessor(object):
         )
 
     @staticmethod
-    def _should_handle_message(tracker):
+    def _should_handle_message(tracker: DialogueStateTracker):
         return (
             not tracker.is_paused()
             or tracker.latest_message.intent.get("name") == USER_INTENT_RESTART
@@ -451,8 +478,8 @@ class MessageProcessor(object):
             logger.error(
                 "Encountered an exception while running action '{}'. "
                 "Bot will continue, but the actions events are lost. "
-                "Make sure to fix the exception in your custom "
-                "code.".format(action.name())
+                "Please check the logs of your action server for "
+                "more information.".format(action.name())
             )
             logger.debug(e, exc_info=True)
             events = []
@@ -522,7 +549,7 @@ class MessageProcessor(object):
             # the timestamp would indicate a time before the time
             # of the action executed
             e.timestamp = time.time()
-            tracker.update(e)
+            tracker.update(e, self.domain)
 
     def _get_tracker(self, sender_id: Text) -> Optional[DialogueStateTracker]:
         sender_id = sender_id or UserMessage.DEFAULT_SENDER_ID
