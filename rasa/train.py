@@ -421,7 +421,11 @@ async def _train_nlu_async(
     # /bf mod
 
     training_datas = await file_importer.get_nlu_data()
-    if training_datas.is_empty():
+    # bf mod
+    nlu_data_empty = (isinstance(training_datas, dict) and all(map(lambda d: d.is_empty(), training_datas.values()))) or \
+                     (isinstance(training_datas, TrainingData) and training_datas.is_empty())
+    # /bf mod
+    if nlu_data_empty:
         print_error(
             "No NLU data given. Please provide NLU data in order to train "
             "a Rasa NLU model using the '--nlu' argument."
@@ -467,7 +471,7 @@ async def _train_nlu_with_validated_data(
                 print_color("Start training {} NLU model ...".format(lang), color=bcolors.OKBLUE)
                 _, models[lang], _ = await rasa.nlu.train(
                     config[lang],
-                    config[lang]['path'],
+                    file_importer, # config[lang]['path'],
                     _train_path,
                     fixed_model_name="nlu-{}".format(lang),
                     persist_nlu_training_data=persist_nlu_training_data,

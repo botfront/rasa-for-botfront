@@ -655,7 +655,7 @@ def create_app(
         config_dir = os.path.join(temp_dir, 'config')
         os.mkdir(config_dir)
 
-        for key, value in rjs["config"].items():
+        for key in rjs["config"].keys():
             config_file_path = os.path.join(config_dir, "{}.yml".format(key))
             dump_obj_as_str_to_file(config_file_path, rjs["config"][key])
             config_paths[key] = config_file_path
@@ -664,7 +664,7 @@ def create_app(
             nlu_dir = os.path.join(temp_dir, 'nlu')
             os.mkdir(nlu_dir)
 
-            for key, value in rjs["nlu"].items():
+            for key in rjs["nlu"].keys():
                 nlu_file_path = os.path.join(nlu_dir, "{}.md".format(key))
                 dump_obj_as_str_to_file(nlu_file_path, rjs["nlu"][key]["data"])
         # /bf mod
@@ -687,6 +687,8 @@ def create_app(
                 force_training=rjs.get("force", False),
                 # botfront: add the possibility to pass a fixed name in the json payload
                 fixed_model_name=rjs.get("fixed_model_name", None),
+                # persist data file for nlu components to use
+                persist_nlu_training_data=True,
             )
 
             filename = os.path.basename(model_path) if model_path else None
