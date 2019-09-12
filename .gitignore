@@ -82,3 +82,5 @@ docs/core/key.pub
 failed_stories.md
 errors.json
 #_project
+pip-wheel-metadata/*
+events.db

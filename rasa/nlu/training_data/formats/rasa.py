@@ -2,7 +2,7 @@ from collections import defaultdict
 
 import logging
 import typing
-from typing import Any, Dict, Text
+from typing import Any, Dict, Text, Tuple
 
 from rasa.constants import DOCS_BASE_URL
 from rasa.nlu.training_data.formats.readerwriter import (
@@ -11,6 +11,12 @@ from rasa.nlu.training_data.formats.readerwriter import (
 )
 from rasa.nlu.training_data.util import transform_entity_synonyms
 from rasa.nlu.utils import json_to_string
+from rasa.nlu.constants import (
+    MESSAGE_INTENT_ATTRIBUTE,
+    MESSAGE_RESPONSE_KEY_ATTRIBUTE,
+    MESSAGE_RESPONSE_ATTRIBUTE,
+    RESPONSE_IDENTIFIER_DELIMITER,
+)
 
 if typing.TYPE_CHECKING:
     from rasa.nlu.training_data import Message, TrainingData
@@ -58,8 +64,9 @@ class RasaReader(JsonTrainingDataReader):
 
 
 class RasaWriter(TrainingDataWriter):
-    def dumps(self, training_data, **kwargs):
+    def dumps(self, training_data: "TrainingData", **kwargs) -> Text:
         """Writes Training Data to a string in json format."""
+
         js_entity_synonyms = defaultdict(list)
         for k, v in training_data.entity_synonyms.items():
             if k != v:
@@ -71,7 +78,7 @@ class RasaWriter(TrainingDataWriter):
         ]
 
         formatted_examples = [
-            example.as_dict() for example in training_data.training_examples
+            example.as_dict_nlu() for example in training_data.training_examples
         ]
 
         return json_to_string(

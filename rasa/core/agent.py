@@ -4,34 +4,30 @@ import shutil
 import tempfile
 import uuid
 from asyncio import CancelledError
-from sanic import Sanic
 from typing import Any, Callable, Dict, List, Optional, Text, Tuple, Union
 
 import aiohttp
+from sanic import Sanic
 
 import rasa
 import rasa.utils.io
 from rasa.constants import DEFAULT_DOMAIN_PATH, LEGACY_DOCS_BASE_URL
 from rasa.core import constants, jobs, training
-from rasa.core.channels.channel import (
-    InputChannel,
-    OutputChannel,
-    UserMessage,
-    CollectingOutputChannel,
-)
+from rasa.core.channels.channel import InputChannel, OutputChannel, UserMessage
 from rasa.core.constants import DEFAULT_REQUEST_TIMEOUT
-from rasa.core.domain import Domain, InvalidDomain
+from rasa.core.domain import Domain
 from rasa.core.exceptions import AgentNotReady
 from rasa.core.interpreter import NaturalLanguageInterpreter, RegexInterpreter
+from rasa.core.lock_store import LockStore, InMemoryLockStore
 from rasa.core.nlg import NaturalLanguageGenerator
-from rasa.core.policies.policy import Policy
-from rasa.core.policies.form_policy import FormPolicy
 from rasa.core.policies.ensemble import PolicyEnsemble, SimplePolicyEnsemble
 from rasa.core.policies.memoization import MemoizationPolicy
+from rasa.core.policies.policy import Policy
 from rasa.core.processor import MessageProcessor
 from rasa.core.tracker_store import InMemoryTrackerStore, TrackerStore
 from rasa.core.trackers import DialogueStateTracker
-from rasa.core.utils import LockCounter
+from rasa.exceptions import ModelNotFound
+from rasa.importers.importer import TrainingDataImporter
 from rasa.model import (
     get_model_subdirectories,
     get_latest_model,
@@ -41,7 +37,6 @@ from rasa.model import (
 from rasa.nlu.utils import is_url
 from rasa.utils.common import update_sanic_log_level, set_log_level
 from rasa.utils.endpoints import EndpointConfig
-from rasa.exceptions import ModelNotFound
 
 logger = logging.getLogger(__name__)
 
@@ -73,6 +68,7 @@ def _load_and_set_updated_model(
 
     logger.debug("Found new model with fingerprint {}. Loading...".format(fingerprint))
 
+    # bf mod
     core_path, nlu_models = get_model_subdirectories(model_directory)
 
     interpreters = {}
@@ -88,15 +84,16 @@ def _load_and_set_updated_model(
         models_fingerprint = fingerprint_from_path(model_directory)
         if len(models_fingerprint.get(FINGERPRINT_CONFIG_NLU_KEY).keys()):
             interpreters = {list(models_fingerprint.get(FINGERPRINT_CONFIG_NLU_KEY).keys())[0]: RegexInterpreter()}
+    # /bf mod
 
     domain = None
-    if os.path.exists(core_path):
+    if core_path:
         domain_path = os.path.join(os.path.abspath(core_path), DEFAULT_DOMAIN_PATH)
         domain = Domain.load(domain_path)
 
     try:
         policy_ensemble = None
-        if os.path.exists(core_path):
+        if core_path:
             policy_ensemble = PolicyEnsemble.load(core_path)
         agent.update_model(
             domain, policy_ensemble, fingerprint, interpreters, model_directory
@@ -163,9 +160,10 @@ async def _pull_model_and_fingerprint(
                     return None
                 elif resp.status == 404:
                     logger.debug(
-                        "Model server didn't find a model for our request. "
-                        "Probably no one did train a model for the project "
-                        "and tag combination yet."
+                        "Model server could not find a model at the requested "
+                        "endpoint '{}'. It's possible that no model has been "
+                        "trained, or that the requested tag hasn't been "
+                        "assigned.".format(model_server.url)
                     )
                     return None
                 elif resp.status != 200:
@@ -230,6 +228,7 @@ async def load_agent(
     interpreters: Optional[Dict[Text, NaturalLanguageInterpreter]] = None,
     generator: Union[EndpointConfig, NaturalLanguageGenerator] = None,
     tracker_store: Optional[TrackerStore] = None,
+    lock_store: Optional[LockStore] = None,
     action_endpoint: Optional[EndpointConfig] = None,
 ):
     try:
@@ -239,6 +238,7 @@ async def load_agent(
                     interpreters=interpreters,
                     generator=generator,
                     tracker_store=tracker_store,
+                    lock_store=lock_store,
                     action_endpoint=action_endpoint,
                     model_server=model_server,
                     remote_storage=remote_storage,
@@ -253,6 +253,7 @@ async def load_agent(
                 interpreters=interpreters,
                 generator=generator,
                 tracker_store=tracker_store,
+                lock_store=lock_store,
                 action_endpoint=action_endpoint,
                 model_server=model_server,
             )
@@ -263,6 +264,7 @@ async def load_agent(
                 interpreters=interpreters,
                 generator=generator,
                 tracker_store=tracker_store,
+                lock_store=lock_store,
                 action_endpoint=action_endpoint,
                 model_server=model_server,
                 remote_storage=remote_storage,
@@ -285,11 +287,12 @@ class Agent(object):
 
     def __init__(
         self,
-        domain: Union[Text, Domain] = None,
+        domain: Union[Text, Domain, None] = None,
         policies: Union[PolicyEnsemble, List[Policy], None] = None,
         interpreters: Optional[Dict[Text, NaturalLanguageInterpreter]] = None,
         generator: Union[EndpointConfig, NaturalLanguageGenerator, None] = None,
         tracker_store: Optional[TrackerStore] = None,
+        lock_store: Optional[LockStore] = None,
         action_endpoint: Optional[EndpointConfig] = None,
         fingerprint: Optional[Text] = None,
         model_directory: Optional[Text] = None,
@@ -298,21 +301,22 @@ class Agent(object):
     ):
         # Initializing variables with the passed parameters.
         self.domain = self._create_domain(domain)
-        if self.domain:
-            self.domain.add_requested_slot()
         self.policy_ensemble = self._create_ensemble(policies)
-        if not self._is_form_policy_present():
-            raise InvalidDomain(
-                "You have defined a form action, but haven't added the "
-                "FormPolicy to your policy ensemble."
-            )
+
+        if self.domain is not None:
+            self.domain.add_requested_slot()
+            self.domain.add_knowledge_base_slots()
+
+        PolicyEnsemble.check_domain_ensemble_compatibility(
+            self.policy_ensemble, self.domain
+        )
 
         self.interpreters = interpreters or RegexInterpreter()
 
         self.nlg = NaturalLanguageGenerator.create(generator, self.domain)
         self.tracker_store = self.create_tracker_store(tracker_store, self.domain)
+        self.lock_store = self._create_lock_store(lock_store)
         self.action_endpoint = action_endpoint
-        self.conversations_in_processing = {}
 
         self._set_fingerprint(fingerprint)
         self.model_directory = model_directory
@@ -321,8 +325,8 @@ class Agent(object):
 
     def update_model(
         self,
-        domain: Domain,
-        policy_ensemble: PolicyEnsemble,
+        domain: Optional[Domain],
+        policy_ensemble: Optional[PolicyEnsemble],
         fingerprint: Optional[Text],
         interpreters: Optional[Dict[str, NaturalLanguageInterpreter]] = None,
         model_directory: Optional[Text] = None,
@@ -340,7 +344,7 @@ class Agent(object):
         # update domain on all instances
         self.tracker_store.domain = domain
         if hasattr(self.nlg, "templates"):
-            self.nlg.templates = domain.templates or []
+            self.nlg.templates = domain.templates if domain else {}
 
         self.model_directory = model_directory
 
@@ -351,6 +355,7 @@ class Agent(object):
         interpreters: Optional[Dict[Text, NaturalLanguageInterpreter]] = None,
         generator: Union[EndpointConfig, NaturalLanguageGenerator] = None,
         tracker_store: Optional[TrackerStore] = None,
+        lock_store: Optional[LockStore] = None,
         action_endpoint: Optional[EndpointConfig] = None,
         model_server: Optional[EndpointConfig] = None,
         remote_storage: Optional[Text] = None,
@@ -387,7 +392,7 @@ class Agent(object):
         domain = None
         ensemble = None
 
-        if os.path.exists(core_model):
+        if core_model:
             domain = Domain.load(os.path.join(core_model, DEFAULT_DOMAIN_PATH))
             ensemble = PolicyEnsemble.load(core_model) if core_model else None
 
@@ -400,22 +405,27 @@ class Agent(object):
             interpreters=interpreters,
             generator=generator,
             tracker_store=tracker_store,
+            lock_store=lock_store,
             action_endpoint=action_endpoint,
             model_directory=model_path,
             model_server=model_server,
             remote_storage=remote_storage,
         )
 
+    def is_core_ready(self):
+        """Check if all necessary components and policies are ready to use the agent.
+        """
+        return self.is_ready() and self.policy_ensemble
+
     def is_ready(self):
-        """Check if all necessary components are instantiated to use agent."""
-        return (
-            self.tracker_store is not None
-            and self.policy_ensemble is not None
-            and self.interpreters is not None
-        )
+        """Check if all necessary components are instantiated to use agent.
+
+        Policies might not be available, if this is an NLU only agent."""
+
+        return self.tracker_store and self.interpreters
 
     async def parse_message_using_nlu_interpreter(
-        self, message_data: Text
+        self, message_data: Text, tracker: DialogueStateTracker = None
     ) -> Dict[Text, Any]:
         """Handles message text and intent payload input messages.
 
@@ -424,6 +434,8 @@ class Agent(object):
         Args:
             message_data (Text): Contain the received message in text or\
             intent payload format.
+            tracker (DialogueStateTracker): Contains the tracker to be\
+            used by the interpreter.
 
         Returns:
             The parsed message.
@@ -442,7 +454,7 @@ class Agent(object):
 
         processor = self.create_processor()
         message = UserMessage(message_data)
-        return await processor._parse_message(message)
+        return await processor._parse_message(message, tracker)
 
     async def handle_message(
         self,
@@ -471,34 +483,8 @@ class Agent(object):
 
         processor = self.create_processor(message_preprocessor)
 
-        # get the lock for the current conversation
-        lock = self.conversations_in_processing.get(message.sender_id)
-        if not lock:
-            logger.debug(
-                "Created a new lock for conversation '{}'".format(message.sender_id)
-            )
-            lock = LockCounter()
-            self.conversations_in_processing[message.sender_id] = lock
-
-        try:
-            async with lock:
-                # this makes sure that there can always only be one coroutine
-                # handling a conversation at any point in time
-                # Note: this doesn't support multi-processing, it just works
-                # for coroutines. If there are multiple processes handling
-                # messages, an external system needs to make sure messages
-                # for the same conversation are always processed by the same
-                # process.
-                return await processor.handle_message(message)
-        finally:
-            if not lock.is_someone_waiting():
-                # dispose of the lock if no one needs it to avoid
-                # accumulating locks
-                del self.conversations_in_processing[message.sender_id]
-                logger.debug(
-                    "Deleted lock for conversation '{}' (unused)"
-                    "".format(message.sender_id)
-                )
+        async with self.lock_store.lock(message.sender_id):
+            return await processor.handle_message(message)
 
     # noinspection PyUnusedLocal
     def predict_next(self, sender_id: Text, **kwargs: Any) -> Optional[Dict[Text, Any]]:
@@ -523,7 +509,7 @@ class Agent(object):
         self,
         sender_id: Text,
         action: Text,
-        output_channel: CollectingOutputChannel,
+        output_channel: OutputChannel,
         policy: Text,
         confidence: float,
     ) -> DialogueStateTracker:
@@ -593,7 +579,7 @@ class Agent(object):
         self, trackers: List[DialogueStateTracker], **kwargs: Any
     ) -> None:
 
-        if not self.is_ready():
+        if not self.is_core_ready():
             raise AgentNotReady("Can't continue training without a policy ensemble.")
 
         self.policy_ensemble.continue_training(trackers, self.domain, **kwargs)
@@ -623,10 +609,10 @@ class Agent(object):
 
     async def load_data(
         self,
-        resource_name: Text,
+        training_resource: Union[Text, TrainingDataImporter],
         remove_duplicates: bool = True,
         unique_last_num_states: Optional[int] = None,
-        augmentation_factor: int = 20,
+        augmentation_factor: int = 50,
         tracker_limit: Optional[int] = None,
         use_story_concatenation: bool = True,
         debug_plots: bool = False,
@@ -656,7 +642,7 @@ class Agent(object):
             )
 
         return await training.load_data(
-            resource_name,
+            training_resource,
             self.domain,
             remove_duplicates,
             unique_last_num_states,
@@ -677,7 +663,7 @@ class Agent(object):
             **kwargs: additional arguments passed to the underlying ML
                            trainer (e.g. keras parameters)
         """
-        if not self.is_ready():
+        if not self.is_core_ready():
             raise AgentNotReady("Can't train without a policy ensemble.")
 
         # deprecation tests
@@ -786,7 +772,7 @@ class Agent(object):
     def persist(self, model_path: Text, dump_flattened_stories: bool = False) -> None:
         """Persists this agent into a directory for later loading and usage."""
 
-        if not self.is_ready():
+        if not self.is_core_ready():
             raise AgentNotReady("Can't persist without a policy ensemble.")
 
         if not model_path.endswith("core"):
@@ -830,26 +816,18 @@ class Agent(object):
             fontsize,
         )
 
-    def _ensure_agent_is_ready(self) -> None:
-        """Checks that an interpreter and a tracker store are set.
-
-        Necessary before a processor can be instantiated from this agent.
-        Raises an exception if any argument is missing."""
-
-        if not self.is_ready():
-            raise AgentNotReady(
-                "Agent needs to be prepared before usage. "
-                "You need to set an interpreter, a policy "
-                "ensemble as well as a tracker store."
-            )
-
     def create_processor(
         self, preprocessor: Optional[Callable[[Text], Text]] = None
     ) -> MessageProcessor:
         """Instantiates a processor based on the set state of the agent."""
         # Checks that the interpreter and tracker store are set and
         # creates a processor
-        self._ensure_agent_is_ready()
+        if not self.is_ready():
+            raise AgentNotReady(
+                "Agent needs to be prepared before usage. You need to set an "
+                "interpreter and a tracker store."
+            )
+
         return MessageProcessor(
             self.interpreters,
             self.policy_ensemble,
@@ -869,7 +847,9 @@ class Agent(object):
             return domain
         elif isinstance(domain, Domain):
             return domain
-        elif domain is not None:
+        elif domain is None:
+            return Domain.empty()
+        else:
             raise ValueError(
                 "Invalid param `domain`. Expected a path to a domain "
                 "specification or a domain instance. But got "
@@ -887,6 +867,13 @@ class Agent(object):
             return InMemoryTrackerStore(domain)
 
     @staticmethod
+    def _create_lock_store(store: Optional[LockStore]) -> LockStore:
+        if store is not None:
+            return store
+
+        return InMemoryLockStore()
+
+    @staticmethod
     def _create_ensemble(
         policies: Union[List[Policy], PolicyEnsemble, None]
     ) -> Optional[PolicyEnsemble]:
@@ -901,7 +888,7 @@ class Agent(object):
             raise ValueError(
                 "Invalid param `policies`. Passed object is "
                 "of type '{}', but should be policy, an array of "
-                "policies, or a policy ensemble".format(passed_type)
+                "policies, or a policy ensemble.".format(passed_type)
             )
 
     @staticmethod
@@ -910,6 +897,7 @@ class Agent(object):
         interpreters: Optional[Dict[Text, NaturalLanguageInterpreter]] = None,
         generator: Union[EndpointConfig, NaturalLanguageGenerator] = None,
         tracker_store: Optional[TrackerStore] = None,
+        lock_store: Optional[LockStore] = None,
         action_endpoint: Optional[EndpointConfig] = None,
         model_server: Optional[EndpointConfig] = None,
         remote_storage: Optional[Text] = None,
@@ -931,6 +919,7 @@ class Agent(object):
             interpreters=interpreters,
             generator=generator,
             tracker_store=tracker_store,
+            lock_store=lock_store,
             action_endpoint=action_endpoint,
             model_server=model_server,
             remote_storage=remote_storage,
@@ -943,6 +932,7 @@ class Agent(object):
         interpreters: Optional[Dict[Text, NaturalLanguageInterpreter]] = None,
         generator: Union[EndpointConfig, NaturalLanguageGenerator] = None,
         tracker_store: Optional[TrackerStore] = None,
+        lock_store: Optional[LockStore] = None,
         action_endpoint: Optional[EndpointConfig] = None,
         model_server: Optional[EndpointConfig] = None,
     ) -> Optional["Agent"]:
@@ -959,17 +949,10 @@ class Agent(object):
                 interpreters=interpreters,
                 generator=generator,
                 tracker_store=tracker_store,
+                lock_store=lock_store,
                 action_endpoint=action_endpoint,
                 model_server=model_server,
                 remote_storage=remote_storage,
             )
 
         return None
-
-    def _is_form_policy_present(self) -> bool:
-        """Check whether form policy is present and used."""
-
-        has_form_policy = self.policy_ensemble is not None and any(
-            isinstance(p, FormPolicy) for p in self.policy_ensemble.policies
-        )
-        return not self.domain or not self.domain.form_names or has_form_policy

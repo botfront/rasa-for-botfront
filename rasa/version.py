@@ -1,2 +1,2 @@
-__version__ = "1.1.7"
-__bf_patch__ = "-bf.6"
+__version__ = "1.3.2"
+__bf_patch__ = "-bf.1"
