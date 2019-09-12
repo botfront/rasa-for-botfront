@@ -465,8 +465,12 @@ async def _train_nlu_with_validated_data(
         for lang in config:
             if config[lang]:
                 print_color("Start training {} NLU model ...".format(lang), color=bcolors.OKBLUE)
-                _, models[lang], _ = rasa.nlu.train(
-                    config[lang], config[lang]['path'], _train_path, fixed_model_name="nlu-{}".format(lang)
+                _, models[lang], _ = await rasa.nlu.train(
+                    config[lang],
+                    config[lang]['path'],
+                    _train_path,
+                    fixed_model_name="nlu-{}".format(lang),
+                    persist_nlu_training_data=persist_nlu_training_data,
                 )
             else:
                 print_color("{} NLU data didn't change, skipping training...".format(lang), color=bcolors.OKBLUE)
