@@ -68,6 +68,7 @@ def _load_and_set_updated_model(
 
     logger.debug("Found new model with fingerprint {}. Loading...".format(fingerprint))
 
+    # bf mod
     core_path, nlu_models = get_model_subdirectories(model_directory)
 
     interpreters = {}
@@ -83,6 +84,7 @@ def _load_and_set_updated_model(
         models_fingerprint = fingerprint_from_path(model_directory)
         if len(models_fingerprint.get(FINGERPRINT_CONFIG_NLU_KEY).keys()):
             interpreters = {list(models_fingerprint.get(FINGERPRINT_CONFIG_NLU_KEY).keys())[0]: RegexInterpreter()}
+    # /bf mod
 
     domain = None
     if core_path:

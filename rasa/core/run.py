@@ -211,10 +211,12 @@ async def load_agent_on_start(
 
     try:
         with get_model(model_path) as unpacked_model:
+            # bf mod
             _, nlu_models = get_model_subdirectories(unpacked_model)
             _interpreters = {}
             for lang, nlu_model_path in nlu_models.items():
                 _interpreters[lang] = NaturalLanguageInterpreter.create(nlu_model_path)
+            # /bf mod
     except Exception:
         logger.debug("Could not load interpreter from '{}'".format(model_path))
         _interpreters = {}

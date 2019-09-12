@@ -39,7 +39,7 @@ class TrainingData(object):
         entity_synonyms: Optional[Dict[Text, Text]] = None,
         regex_features: Optional[List[Dict[Text, Text]]] = None,
         lookup_tables: Optional[List[Dict[Text, Text]]] = None,
-        gazette: Optional[List[Dict[Text, List[Text]]]] = None
+        gazette: Optional[List[Dict[Text, List[Text]]]] = None,
         nlg_stories: Optional[Dict[Text, List[Text]]] = None,
     ) -> None:
 

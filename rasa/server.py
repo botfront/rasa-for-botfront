@@ -649,6 +649,7 @@ def create_app(
         # training data
         temp_dir = tempfile.mkdtemp()
 
+        # bf mod
         config_paths = {}
 
         config_dir = os.path.join(temp_dir, 'config')
@@ -666,6 +667,7 @@ def create_app(
             for key, value in rjs["nlu"].items():
                 nlu_file_path = os.path.join(nlu_dir, "{}.md".format(key))
                 dump_obj_as_str_to_file(nlu_file_path, rjs["nlu"][key]["data"])
+        # /bf mod
 
         if "stories" in rjs:
             stories_path = os.path.join(temp_dir, "stories.md")

@@ -138,6 +138,7 @@ def get_model_subdirectories(
 
     """
     core_path = os.path.join(unpacked_model_path, "core")
+    # bf mod
     # nlu_path = os.path.join(unpacked_model_path, "nlu")
     nlu_models = list(filter(lambda d: d.startswith("nlu"), os.listdir(unpacked_model_path)))
     nlu_paths = {}
@@ -152,7 +153,7 @@ def get_model_subdirectories(
         core_path = None
 
     if len(nlu_paths) == 0:
-        nlu_path = None
+        nlu_paths = None
 
     if not core_path and not nlu_paths:
         raise ModelNotFound(
@@ -162,6 +163,7 @@ def get_model_subdirectories(
         )
 
     return core_path, nlu_paths
+    # /bf mod
 
 
 def create_package_rasa(
@@ -215,11 +217,10 @@ async def model_fingerprint(file_importer: "TrainingDataImporter") -> Fingerprin
     # config = await file_importer.get_config()
     domain = await file_importer.get_domain()
     stories = await file_importer.get_stories()
-    # nlu_data = await file_importer.get_nlu_data()
+    nlu_data = await file_importer.get_nlu_data()
 
     nlu_config = await file_importer.get_nlu_config()
     core_config = await file_importer.get_core_config()
-    from rasa.core.utils import get_file_hash
 
     return {
         FINGERPRINT_CONFIG_KEY: _get_hash_of_config(
@@ -231,8 +232,8 @@ async def model_fingerprint(file_importer: "TrainingDataImporter") -> Fingerprin
         FINGERPRINT_CONFIG_NLU_KEY: {lang: _get_hash_of_config(config, include_keys=CONFIG_MANDATORY_KEYS_NLU)
                                      for (lang, config) in nlu_config.items()},
         FINGERPRINT_DOMAIN_KEY: hash(domain),
-        FINGERPRINT_NLU_DATA_KEY: {lang: get_file_hash(nlu_config[lang]['path'])
-                                   for lang in nlu_config},
+        FINGERPRINT_NLU_DATA_KEY: {lang: hash(nlu_data[lang])
+                                   for lang in nlu_data},
         FINGERPRINT_STORIES_KEY: hash(stories),
         FINGERPRINT_TRAINED_AT_KEY: time.time(),
         FINGERPRINT_RASA_VERSION_KEY: rasa.__version__,

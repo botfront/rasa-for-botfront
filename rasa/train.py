@@ -137,8 +137,13 @@ async def _train_async_internal(
 
     stories = await file_importer.get_stories()
     nlu_data = await file_importer.get_nlu_data()
+    # bf mod
+    from rasa.nlu.training_data import TrainingData
+    nlu_data_empty = (isinstance(nlu_data, dict) and all(map(lambda d: d.is_empty(), nlu_data.values()))) or \
+                     (isinstance(nlu_data, TrainingData) and nlu_data.is_empty())
+    # /bf mod
 
-    if stories.is_empty() and nlu_data.is_empty():
+    if stories.is_empty() and nlu_data_empty:
         print_error(
             "No training data given. Please provide stories and NLU data in "
             "order to train a Rasa model using the '--data' argument."
@@ -154,7 +159,7 @@ async def _train_async_internal(
             persist_nlu_training_data=persist_nlu_training_data,
         )
 
-    if nlu_data.is_empty():
+    if nlu_data_empty:
         print_warning("No NLU data present. Just a Rasa Core model will be trained.")
         return await _train_core_with_validated_data(
             file_importer,
