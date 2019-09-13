@@ -216,7 +216,8 @@ async def model_fingerprint(file_importer: "TrainingDataImporter") -> Fingerprin
     # bf mod
     # config = await file_importer.get_config()
     domain = await file_importer.get_domain()
-    stories = await file_importer.get_stories()
+    # stories = await file_importer.get_stories()
+    stories_hash = await file_importer.get_stories_hash()
     nlu_data = await file_importer.get_nlu_data()
 
     nlu_config = await file_importer.get_nlu_config()
@@ -234,7 +235,7 @@ async def model_fingerprint(file_importer: "TrainingDataImporter") -> Fingerprin
         FINGERPRINT_DOMAIN_KEY: hash(domain),
         FINGERPRINT_NLU_DATA_KEY: {lang: hash(nlu_data[lang])
                                    for lang in nlu_data},
-        FINGERPRINT_STORIES_KEY: hash(stories),
+        FINGERPRINT_STORIES_KEY: stories_hash,
         FINGERPRINT_TRAINED_AT_KEY: time.time(),
         FINGERPRINT_RASA_VERSION_KEY: rasa.__version__,
     }

@@ -775,7 +775,6 @@ def create_app(
         eval_agent = app.agent
 
         model_path = request.args.get("model", None)
-        language = request.args.get("language", None)
         if model_path:
             model_server = app.agent.model_server
             if model_server is not None:
@@ -791,10 +790,16 @@ def create_app(
             raise ErrorResponse(409, "Conflict", "Loaded model file not found.")
 
         model_directory = eval_agent.model_directory
+        # bf mod
+        model_directory = os.path.abspath(os.path.join(model_directory, os.pardir))
+        # /bf mod
         _, nlu_models = get_model_subdirectories(model_directory)
 
         try:
+            # bf mod
+            language = request.args.get("language", None)
             evaluation = run_evaluation(data_path, nlu_models.get(language))
+            # /bf mod
             return response.json(evaluation)
         except Exception as e:
             logger.debug(traceback.format_exc())
