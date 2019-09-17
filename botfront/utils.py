@@ -14,6 +14,11 @@ logger = logging.getLogger(__name__)
 
 from rasa.core.constants import DEFAULT_REQUEST_TIMEOUT
 
+async def load(session, params, url):
+    try:
+        return await session.request("GET", url, timeout=DEFAULT_REQUEST_TIMEOUT, params=params)
+    except aiohttp.ClientError:
+        return None
 
 async def load_from_remote(
     server: EndpointConfig, name: Text, temp_file=True
@@ -24,42 +29,24 @@ async def load_from_remote(
     logger.debug("Requesting {} from server {}...".format(name, server.url))
 
     async with server.session() as session:
-        try:
-            set_log_level()
-            params = server.combine_parameters()
-            async with session.request(
-                "GET",
-                server.url,
-                timeout=DEFAULT_REQUEST_TIMEOUT,
-                params=params,
-            ) as resp:
-
-                if resp.status in [204, 304]:
-                    logger.debug("Model server returned {} status code, indicating "
-                                 "that no new {} are available.".format(resp.status, name))
-                    return None
-                elif resp.status == 404:
-                    logger.warning("Tried to fetch {} from server but got a 404 response".format(name))
-                    raise requests.exceptions.InvalidURL(server.url)
-                elif resp.status != 200:
-                    logger.warning("Tried to fetch {} from server, but server response "
-                                   "status code is {}."
-                                   "".format(name, resp.status))
-                    raise requests.exceptions.InvalidURL(server.url)
-
-                if temp_file is True:
-                    with tempfile.NamedTemporaryFile(mode='w', delete=False) as yamlfile:
-                        yaml.dump( await resp.json(), yamlfile)
-                    return yamlfile.name
-                else:
-                    return await resp.json()
-
-        except aiohttp.ClientError as e:
-            logger.warning("Tried to fetch rules from server, but couldn't reach "
-                           "server. We'll retry later... Error: {}."
-                           "".format(e))
-            raise requests.exceptions.InvalidURL(server.url)
-
+        params = server.combine_parameters()
+        url = server.url
+        tries = 1; resp = None
+        while not resp:
+            if tries == 1 or tries % 5000 == 0:
+                logger.debug('Trying to fetch {} from server (retry #{})'.format(name, str(tries)))
+            resp = await load(session, params, url)
+            tries += 1
+        if resp.status != 200:
+            raise aiohttp.ClientError('Tried to fetch {} from server, but server response '
+                                        'status code is {}.'.format(name, resp.status))
+        json = await resp.json()
+        if temp_file is True:
+            with tempfile.NamedTemporaryFile(mode='w', delete=False) as yamlfile:
+                yaml.dump(json, yamlfile)
+                return yamlfile.name
+        else:
+            return json
 
 def set_endpoints_credentials_args_from_remote(args):
     bf_url = os.environ.get('BF_URL')
@@ -74,9 +61,8 @@ def set_endpoints_credentials_args_from_remote(args):
             args.endpoints = asyncio.get_event_loop().run_until_complete(
                 load_from_remote(EndpointConfig(url=url), "endpoints")
             )
-        except Exception as e:
-            print(e)
-            raise ValueError('No endpoints found for project {}.'.format(project_id))
+        except aiohttp.ClientError:
+            raise aiohttp.ClientError('Could not load endpoints for project {}.'.format(project_id))
 
     if not args.credentials:
         logger.info("Fetching credentials from server")
@@ -85,9 +71,8 @@ def set_endpoints_credentials_args_from_remote(args):
             args.credentials = asyncio.get_event_loop().run_until_complete(
                 load_from_remote(EndpointConfig(url=url), "credentials")
             )
-        except Exception as e:
-            print(e)
-            raise ValueError('No credentials found for project {}.'.format(project_id))
+        except aiohttp.ClientError:
+            raise aiohttp.ClientError('Could not load credentials for project {}.'.format(project_id))
 
 
 def get_latest_parse_data_language(all_events):
@@ -104,7 +89,7 @@ def get_latest_parse_data_language(all_events):
 
 def get_project_default_language(project_id, base_url):
     url = '{base_url}/project/{project_id}/models/published'.format(base_url=base_url, project_id=project_id)
-    result = requests.get(url);
+    result = requests.get(url)
     try:
         result = requests.get(url)
         if result.status_code == 200:
@@ -118,7 +103,7 @@ def get_project_default_language(project_id, base_url):
                 "Error: {}".format(result.json()))
             return None
 
-    except Exception as e:
+    except Exception:
         logger.error(
             "Failed to get project default language"
             "Error: {}".format(result.json()))
