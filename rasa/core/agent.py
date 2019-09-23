@@ -378,7 +378,7 @@ class Agent(object):
             )
 
         core_model, nlu_models = get_model_subdirectories(model_path)
-        if len(nlu_models):
+        if nlu_models:
             if not interpreters:
                 interpreters = {}
                 for lang, model_path in nlu_models.items():
