@@ -32,14 +32,12 @@ async def load_from_remote(
         params = server.combine_parameters()
         url = server.url
         tries = 1; resp = None
-        while not resp:
+        while not resp or resp.status != 200:
             if tries == 1 or tries % 5000 == 0:
                 logger.debug('Trying to fetch {} from server (retry #{})'.format(name, str(tries)))
             resp = await load(session, params, url)
             tries += 1
-        if resp.status != 200:
-            raise aiohttp.ClientError('Tried to fetch {} from server, but server response '
-                                        'status code is {}.'.format(name, resp.status))
+
         json = await resp.json()
         if temp_file is True:
             with tempfile.NamedTemporaryFile(mode='w', delete=False) as yamlfile:
