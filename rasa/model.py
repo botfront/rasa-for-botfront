@@ -416,11 +416,13 @@ def should_retrain(new_fingerprint: Fingerprint, old_model: Text, train_path: Te
             retrain_core = not merge_model(old_core, target_path)
 
         # bf: copy existing NLU models for languages not needing to be retrained
-        languages_to_train = nlu_fingerprint_changed(last_fingerprint, new_fingerprint)
-        for lang in old_nlu.keys():
-            target_path = os.path.join(train_path, "nlu-{}".format(lang))
-            if not merge_model(old_nlu.get(lang), target_path):
-                languages_to_train.append(lang)
+        languages_to_train = list(new_fingerprint[FINGERPRINT_NLU_DATA_KEY].keys())
+        if old_nlu:
+            languages_to_train = nlu_fingerprint_changed(last_fingerprint, new_fingerprint)
+            for lang in old_nlu.keys():
+                target_path = os.path.join(train_path, "nlu-{}".format(lang))
+                if not merge_model(old_nlu.get(lang), target_path):
+                    languages_to_train.append(lang)
 
         return retrain_core, languages_to_train
 
