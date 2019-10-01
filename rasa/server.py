@@ -319,7 +319,7 @@ def add_root_route(app: Sanic):
     @app.get("/")
     async def hello(request: Request):
         """Check if the server is running and responds with the version."""
-        return response.text("Hello from Rasa: " + rasa.__version__)
+        return response.text("Hello from Rasa: " + rasa.__version_bf__)
 
 
 def create_app(
@@ -371,7 +371,7 @@ def create_app(
 
         return response.json(
             {
-                "version": rasa.__version__,
+                "version": rasa.__version_bf__,
                 "minimum_compatible_version": MINIMUM_COMPATIBLE_VERSION,
             }
         )
