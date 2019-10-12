@@ -96,7 +96,7 @@ class TemplatedNaturalLanguageGenerator(NaturalLanguageGenerator):
         if template_name not in self.templates:
             return None
         
-        return [self._fill_template_text(
+        return [self._fill_template(
             copy.deepcopy(template), filled_slots, **kwargs
         ) for template in self.templates[template_name][language]]
 
