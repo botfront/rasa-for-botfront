@@ -1,26 +1,26 @@
 import asyncio
 import logging
+import os
 import shutil
 from functools import partial
 from typing import List, Optional, Text, Union
 
 from sanic import Sanic
-from sanic_cors import CORS
 
-import rasa.core
+import rasa.core.utils
 import rasa.utils
 import rasa.utils.io
-from rasa.core import constants, utils
-from rasa.core.agent import load_agent, Agent
+import rasa.utils.common
+from rasa import model
+from rasa import server
+from rasa.core import agent, channels, constants
+from rasa.core.agent import Agent
 from rasa.core.channels import console
 from rasa.core.channels.channel import InputChannel
 from rasa.core.interpreter import NaturalLanguageInterpreter
 from rasa.core.lock_store import LockStore
 from rasa.core.tracker_store import TrackerStore
-from rasa.core.utils import AvailableEndpoints, configure_file_logging
-from rasa.model import get_model_subdirectories, get_model
-from rasa.utils.common import update_sanic_log_level, class_from_module_path
-from rasa.server import add_root_route
+from rasa.core.utils import AvailableEndpoints
 
 logger = logging.getLogger()  # get the root logger
 
@@ -56,7 +56,7 @@ def _create_single_channel(channel, credentials):
     else:
         # try to load channel based on class name
         try:
-            input_channel_class = class_from_module_path(channel)
+            input_channel_class = rasa.utils.common.class_from_module_path(channel)
             return input_channel_class.from_credentials(credentials)
         except (AttributeError, ImportError):
             raise Exception(
@@ -70,14 +70,14 @@ def _create_single_channel(channel, credentials):
 
 def _create_app_without_api(cors: Optional[Union[Text, List[Text]]] = None):
     app = Sanic(__name__, configure_logging=False)
-    add_root_route(app)
-    CORS(app, resources={r"/*": {"origins": cors or ""}}, automatic_options=True)
+    server.add_root_route(app)
+    server.configure_cors(app, cors)
     return app
 
 
 def configure_app(
     input_channels: Optional[List["InputChannel"]] = None,
-    cors: Optional[Union[Text, List[Text]]] = None,
+    cors: Optional[Union[Text, List[Text], None]] = None,
     auth_token: Optional[Text] = None,
     enable_api: bool = True,
     jwt_secret: Optional[Text] = None,
@@ -90,7 +90,7 @@ def configure_app(
     """Run the agent."""
     from rasa import server
 
-    configure_file_logging(logger, log_file)
+    rasa.core.utils.configure_file_logging(logger, log_file)
 
     if enable_api:
         app = server.create_app(
@@ -104,12 +104,12 @@ def configure_app(
         app = _create_app_without_api(cors)
 
     if input_channels:
-        rasa.core.channels.channel.register(input_channels, app, route=route)
+        channels.channel.register(input_channels, app, route=route)
     else:
         input_channels = []
 
     if logger.isEnabledFor(logging.DEBUG):
-        utils.list_routes(app)
+        rasa.core.utils.list_routes(app)
 
     # configure async loop logging
     async def configure_async_logging():
@@ -150,6 +150,7 @@ def serve_application(
     log_file: Optional[Text] = None,
     ssl_certificate: Optional[Text] = None,
     ssl_keyfile: Optional[Text] = None,
+    ssl_ca_file: Optional[Text] = None,
     ssl_password: Optional[Text] = None,
 ):
     from rasa import server
@@ -171,7 +172,9 @@ def serve_application(
         log_file=log_file,
     )
 
-    ssl_context = server.create_ssl_context(ssl_certificate, ssl_keyfile, ssl_password)
+    ssl_context = server.create_ssl_context(
+        ssl_certificate, ssl_keyfile, ssl_ca_file, ssl_password
+    )
     protocol = "https" if ssl_context else "http"
 
     logger.info(
@@ -190,9 +193,14 @@ def serve_application(
 
     app.register_listener(clear_model_files, "after_server_stop")
 
-    update_sanic_log_level(log_file)
+    rasa.utils.common.update_sanic_log_level(log_file)
 
-    app.run(host="0.0.0.0", port=port, ssl=ssl_context)
+    app.run(
+        host="0.0.0.0",
+        port=port,
+        ssl=ssl_context,
+        backlog=int(os.environ.get("SANIC_BACKLOG", "100")),
+    )
 
 
 # noinspection PyUnusedLocal
@@ -210,12 +218,12 @@ async def load_agent_on_start(
     import rasa.core.brokers.utils as broker_utils
 
     try:
-        with get_model(model_path) as unpacked_model:
+        with model.get_model(model_path) as unpacked_model:
             # bf mod
-            _, nlu_models = get_model_subdirectories(unpacked_model)
+            _, nlu_models = model.get_model_subdirectories(unpacked_model)
             _interpreters = {}
             for lang, nlu_model_path in nlu_models.items():
-                _interpreters[lang] = NaturalLanguageInterpreter.create(nlu_model_path)
+                _interpreters[lang] = NaturalLanguageInterpreter.create(nlu_model_path, endpoints.nlu)
             # /bf mod
     except Exception:
         logger.debug("Could not load interpreter from '{}'".format(model_path))
@@ -229,7 +237,7 @@ async def load_agent_on_start(
 
     model_server = endpoints.model if endpoints and endpoints.model else None
 
-    app.agent = await load_agent(
+    app.agent = await agent.load_agent(
         model_path,
         model_server=model_server,
         remote_storage=remote_storage,

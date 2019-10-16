@@ -7,7 +7,106 @@ Rasa Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning`_ starting with version 1.0.
 
+[Unreleased 1.3.10]
+^^^^^^^^^^^^^^^^^^^
 
+Added
+-----
+
+Fixed
+-----
+
+Changed
+-------
+
+Removed
+-------
+
+[1.3.9] - 2019-10-10
+^^^^^^^^^^^^^^^^^^^^
+
+Added
+-----
+- Port of 1.2.10 (support for RabbitMQ TLS authentication and ``port`` key in
+  event broker endpoint config).
+- Port of 1.2.11 (support for passing a CA file for SSL certificate verification via the
+  --ssl-ca-file flag).
+
+Fixed
+-----
+- Fixed the hanging HTTP call with ``ner_duckling_http`` pipeline.
+- Fixed text processing of ``intent`` attribute inside ``CountVectorFeaturizer``.
+
+[1.3.8] - 2019-10-08
+^^^^^^^^^^^^^^^^^^^^
+
+Changed
+-------
+- Policies now only get imported if they are actually used. This removes
+  TensorFlow warnings when starting Rasa X
+
+Fixed
+-----
+- Fixed error ``Object of type 'MaxHistoryTrackerFeaturizer' is not JSON serializable``
+  when running ``rasa train core``
+- Default channel ``send_`` methods no longer support kwargs as they caused issues in incompatible channels
+- Fixed ``argument of type 'NoneType' is not iterable`` when using ``rasa shell``,
+  ``rasa interactive`` / ``rasa run``
+
+[1.3.7] - 2019-09-27
+^^^^^^^^^^^^^^^^^^^^
+
+Fixed
+-----
+- re-added TLS, SRV dependencies for PyMongo
+- socketio can now be run without turning on the ``--enable-api`` flag
+- MappingPolicy no longer fails when the latest action doesn't have a policy
+
+[1.3.6] - 2019-09-21
+^^^^^^^^^^^^^^^^^^^^
+
+Added
+-----
+- Added the ability for users to specify a conversation id to send a message to when
+  using the ``RasaChat`` input channel.
+
+[1.3.5] - 2019-09-20
+^^^^^^^^^^^^^^^^^^^^
+
+Fixed
+-----
+- Fixed issue where ``rasa init`` would fail without spaCy being installed
+
+[1.3.4] - 2019-09-20
+^^^^^^^^^^^^^^^^^^^^
+
+Added
+-----
+- Added the ability to set the ``backlog`` parameter in Sanics ``run()`` method using
+  the ``SANIC_BACKLOG`` environment variable. This parameter sets the
+  number of unaccepted connections the server allows before refusing new
+  connections. A default value of 100 is used if the variable is not set.
+- Status endpoint (``/status``) now also returns the number of training processes currently running
+
+Fixed
+-----
+- Added the ability to properly deal with spaCy ``Doc``-objects created on
+  empty strings as discussed `here <https://github.com/RasaHQ/rasa/issues/4445>`_.
+  Only training samples that actually bear content are sent to ``self.nlp.pipe``
+  for every given attribute. Non-content-bearing samples are converted to empty
+  ``Doc``-objects. The resulting lists are merged with their preserved order and
+  properly returned.
+- asyncio warnings are now only printed if the callback takes more than 100ms
+  (up from 1ms).
+- ``agent.load_model_from_server`` no longer affects logging.
+
+Changed
+-------
+- The endpoint ``POST /model/train`` no longer supports specifying an output directory
+  for the trained model using the field ``out``. Instead you can choose whether you
+  want to save the trained model in the default model directory (``models``)
+  (default behavior) or in a temporary directory by specifying the
+  ``save_to_default_model_directory`` field in the training request.
 
 [1.3.3] - 2019-09-13
 ^^^^^^^^^^^^^^^^^^^^
@@ -18,6 +117,7 @@ Fixed
 - Default one-hot representation for label featurization inside ``EmbeddingIntentClassifier`` if label features don't exist.
 - Policy ensemble no longer incorrectly wrings "missing mapping policy" when
   mapping policy is present.
+- "test" from ``utter_custom_json`` now correctly saved to tracker when using telegram channel
 
 Removed
 -------
@@ -37,6 +137,7 @@ Fixed
 Changed
 -------
 - Pin gast to == 0.2.2
+
 
 [1.3.0] - 2019-09-05
 ^^^^^^^^^^^^^^^^^^^^
@@ -124,6 +225,47 @@ Fixed
 Removed
 -------
 - Removed ``--report`` argument from ``rasa test nlu``. All output files are stored in the ``--out`` directory.
+
+[1.2.11] - 2019-10-09
+^^^^^^^^^^^^^^^^^^^^^
+
+Added
+-----
+- Support for passing a CA file for SSL certificate verification via the
+  --ssl-ca-file flag
+
+[1.2.10] - 2019-10-08
+^^^^^^^^^^^^^^^^^^^^^
+
+Added
+-----
+- Added support for RabbitMQ TLS authentication. The following environment variables
+  need to be set:
+  ``RABBITMQ_SSL_CLIENT_CERTIFICATE`` - path to the SSL client certificate (required)
+  ``RABBITMQ_SSL_CLIENT_KEY`` - path to the SSL client key (required)
+  ``RABBITMQ_SSL_CA_FILE`` - path to the SSL CA file (optional, for certificate
+  verification)
+  ``RABBITMQ_SSL_KEY_PASSWORD`` - SSL private key password (optional)
+- Added ability to define the RabbitMQ port using the ``port`` key in the
+  ``event_broker`` endpoint config.
+
+[1.2.9] - 2019-09-17
+^^^^^^^^^^^^^^^^^^^^
+
+Fixed
+-----
+- Correctly pass SSL flag values to x CLI command (backport of
+
+
+[1.2.8] - 2019-09-10
+^^^^^^^^^^^^^^^^^^^^
+
+Fixed
+-----
+- SQL tracker events are retrieved ordered by timestamps. This fixes interactive
+  learning events being shown in the wrong order. Backport of ``1.3.2`` patch
+  (PR #4427).
+
 
 [1.2.7] - 2019-09-02
 ^^^^^^^^^^^^^^^^^^^^
