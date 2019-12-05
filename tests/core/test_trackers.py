@@ -1,4 +1,3 @@
-import asyncio
 import json
 import logging
 import os
@@ -9,7 +8,6 @@ import pytest
 
 import rasa.utils.io
 from rasa.core import training, restore
-from rasa.core import utils
 from rasa.core.actions.action import ACTION_LISTEN_NAME
 from rasa.core.domain import Domain
 from rasa.core.events import (
@@ -36,15 +34,6 @@ from tests.core.utilities import (
 )
 
 domain = Domain.load("examples/moodbot/domain.yml")
-
-
-@pytest.fixture(scope="module")
-def loop():
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    loop = rasa.utils.io.enable_async_loop_debugging(loop)
-    yield loop
-    loop.close()
 
 
 class MockRedisTrackerStore(RedisTrackerStore):
@@ -399,7 +388,7 @@ async def test_dump_and_restore_as_json(default_agent, tmpdir_factory):
         out_path = tmpdir_factory.mktemp("tracker").join("dumped_tracker.json")
 
         dumped = tracker.current_state(EventVerbosity.AFTER_RESTART)
-        utils.dump_obj_as_json_to_file(out_path.strpath, dumped)
+        rasa.utils.io.dump_obj_as_json_to_file(out_path.strpath, dumped)
 
         restored_tracker = restore.load_tracker_from_json(
             out_path.strpath, default_agent.domain
@@ -573,6 +562,21 @@ def test_last_executed_has_not_name():
     tracker = get_tracker(events)
 
     assert tracker.last_executed_action_has("another") is False
+
+
+def test_events_metadata():
+    # It should be possible to attach arbitrary metadata to any event and then
+    # retrieve it after getting the tracker dict representation.
+    events = [
+        ActionExecuted("one", metadata={"one": 1}),
+        user_uttered("two", 1, metadata={"two": 2}),
+        ActionExecuted(ACTION_LISTEN_NAME, metadata={"three": 3}),
+    ]
+
+    events = get_tracker(events).current_state(EventVerbosity.ALL)["events"]
+    assert events[0]["metadata"] == {"one": 1}
+    assert events[1]["metadata"] == {"two": 2}
+    assert events[2]["metadata"] == {"three": 3}
 
 
 @pytest.mark.parametrize("key, value", [("asfa", 1), ("htb", None)])

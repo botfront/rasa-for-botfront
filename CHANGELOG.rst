@@ -7,20 +7,190 @@ Rasa Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning`_ starting with version 1.0.
 
-[Unreleased 1.3.10]
-^^^^^^^^^^^^^^^^^^^
-
-Added
------
+[1.5.1] - 2019-11-27
+^^^^^^^^^^^^^^^^^^^^
+Changed
+-------
+- When NLU training data is dumped as Markdown file the intents are not longer ordered
+  alphabetically, but in the original order of given training data
 
 Fixed
 -----
+- End to end stories now support literal payloads which specify entities, e.g.
+  ``greet: /greet{"name": "John"}``
+- Slots will be correctly interpolated if there are lists in custom response templates.
+- Fixed compatibility issues with ``rasa-sdk`` ``1.5``
+
+[1.5.0] - 2019-11-26
+^^^^^^^^^^^^^^^^^^^^
+
+Added
+-----
+- Added data validator that checks if domain object returned is empty. If so, exit early
+  from the command ``rasa data validate``.
+- Added the KeywordIntentClassifier.
+- Added documentation for ``AugmentedMemoizationPolicy``.
+- Fall back to ``InMemoryTrackerStore`` in case there is any problem with the current
+  tracker store.
+- Arbitrary metadata can now be attached to any ``Event`` subclass. The data must be
+  stored under the ``metadata`` key when reading the event from a JSON object or
+  dictionary.
+- Add command line argument ``rasa x --config CONFIG``, to specify path to the policy
+  and NLU pipeline configuration of your bot (default: ``config.yml``).
+- Added a new NLU featurizer - ``ConveRTFeaturizer`` based on `ConveRT
+  <https://github.com/PolyAI-LDN/polyai-models>`_ model released by PolyAI.
+- Added a new preconfigured pipeline - ``pretrained_embeddings_convert``.
 
 Changed
 -------
+- Do not retrain the entire Core model if only the ``templates`` section of the domain
+  is changed.
+- Upgraded ``jsonschema`` version.
+- Updated ``/status`` endpoint to show correct path to model archive
 
 Removed
 -------
+- Remove duplicate messages when creating training data (issues/1446).
+
+Fixed
+-----
+- ``MultiProjectImporter`` now imports files in the order of the import statements
+- Fixed server hanging forever on leaving ``rasa shell`` before first message
+- Fixed rasa init showing traceback error when user does Keyboard Interrupt before choosing a project path
+- ``CountVectorsFeaturizer`` featurizes intents only if its analyzer is set to ``word``
+- Fixed bug where facebooks generic template was not rendered when buttons were ``None``
+- Fixed default intents unnecessarily raising undefined parsing error
+
+[1.4.6] - 2019-11-22
+^^^^^^^^^^^^^^^^^^^^
+
+Fixed
+-----
+- Fixed Rasa X not working when any tracker store was configured for Rasa.
+- Use the matplotlib backend ``agg`` in case the ``tkinter`` package is not installed.
+
+[1.4.5] - 2019-11-14
+^^^^^^^^^^^^^^^^^^^^
+
+Fixed
+-----
+- NLU-only models no longer throw warnings about parsing features not defined in the domain
+- Fixed bug that stopped Dockerfiles from building version 1.4.4.
+- Fixed format guessing for e2e stories with intent restated as ``/intent``
+
+[1.4.4] - 2019-11-13
+^^^^^^^^^^^^^^^^^^^^
+
+Added
+-----
+- ``PikaEventProducer`` adds the RabbitMQ ``App ID`` message property to published
+  messages with the value of the ``RASA_ENVIRONMENT`` environment variable. The
+  message property will not be assigned if this environment variable isn't set.
+
+Changed
+-------
+- Updated Mattermost connector documentation to be more clear.
+- Updated format strings to f-strings where appropriate.
+- Updated tensorflow requirement to ``1.15.0``
+- Dump domain using UTF-8 (to avoid ``\UXXXX`` sequences in the dumped files)
+
+Fixed
+-----
+- Fixed exporting NLU training data in ``json`` format from ``rasa interactive``
+- Fixed numpy deprecation warnings
+
+[1.4.3] - 2019-10-29
+^^^^^^^^^^^^^^^^^^^^
+
+Fixed
+-----
+- Fixed ``Connection reset by peer`` errors and bot response delays when using the
+  RabbitMQ event broker.
+
+[1.4.2] - 2019-10-28
+^^^^^^^^^^^^^^^^^^^^
+
+Removed
+-------
+- TensorFlow deprecation warnings are no longer shown when running ``rasa x``
+
+Fixed
+-----
+- Fixed ``'Namespace' object has no attribute 'persist_nlu_data'`` error during
+  interactive learning
+- Pinned `networkx~=2.3.0` to fix visualization in `rasa interactive` and Rasa X
+- Fixed ``No model found`` error when using ``rasa run actions`` with "actions"
+  as a directory.
+
+[1.4.1] - 2019-10-22
+^^^^^^^^^^^^^^^^^^^^
+Regression: changes from ``1.2.12`` were missing from ``1.4.0``, readded them
+
+[1.4.0] - 2019-10-19
+^^^^^^^^^^^^^^^^^^^^
+
+Added
+-----
+- add flag to CLI to persist NLU training data if needed
+- log a warning if the ``Interpreter`` picks up an intent or an entity that does not
+  exist in the domain file.
+- added ``DynamoTrackerStore`` to support persistence of agents running on AWS
+- added docstrings for ``TrackerStore`` classes
+- added buttons and images to mattermost.
+- ``CRFEntityExtractor`` updated to accept arbitrary token-level features like word
+  vectors (issues/4214)
+- ``SpacyFeaturizer`` updated to add ``ner_features`` for ``CRFEntityExtractor``
+- Sanitizing incoming messages from slack to remove slack formatting like <mailto:xyz@rasa.com|xyz@rasa.com>
+  or <http://url.com|url.com> and substitute it with original content
+- Added the ability to configure the number of Sanic worker processes in the HTTP
+  server (``rasa.server``) and input channel server
+  (``rasa.core.agent.handle_channels()``). The number of workers can be set using the
+  environment variable ``SANIC_WORKERS`` (default: 1). A value of >1 is allowed only in
+  combination with ``RedisLockStore`` as the lock store.
+- Botframework channel can handle uploaded files in ``UserMessage`` metadata.
+- Added data validator that checks there is no duplicated example data across multiples intents
+
+Changed
+-------
+- Unknown sections in markdown format (NLU data) are not ignored anymore, but instead an error is raised.
+- It is now easier to add metadata to a ``UserMessage`` in existing channels.
+  You can do so by overwriting the method ``get_metadata``. The return value of this
+  method will be passed to the ``UserMessage`` object.
+- Tests can now be run in parallel
+- Serialise ``DialogueStateTracker`` as json instead of pickle. **DEPRECATION warning**:
+  Deserialisation of pickled trackers will be deprecated in version 2.0. For now,
+  trackers are still loaded from pickle but will be dumped as json in any subsequent
+  save operations.
+- Event brokers are now also passed to custom tracker stores (using the ``event_broker`` parameter)
+- Don't run the Rasa Docker image as ``root``.
+- Use multi-stage builds to reduce the size of the Rasa Docker image.
+- Updated the ``/status`` api route to use the actual model file location instead of the ``tmp`` location.
+
+Removed
+-------
+- **Removed Python 3.5 support**
+
+Fixed
+-----
+- fixed missing ``tkinter`` dependency for running tests on Ubuntu
+- fixed issue with ``conversation`` JSON serialization
+- fixed the hanging HTTP call with ``ner_duckling_http`` pipeline
+- fixed Interactive Learning intent payload messages saving in nlu files
+- fixed DucklingHTTPExtractor dimensions by actually applying to the request
+
+
+[1.3.10] - 2019-10-18
+^^^^^^^^^^^^^^^^^^^^^
+
+Added
+-----
+- Can now pass a package as an argument to the ``--actions`` parameter of the
+  ``rasa run actions`` command.
+
+Fixed
+-----
+- Fixed visualization of stories with entities which led to a failing
+  visualization in Rasa X
 
 [1.3.9] - 2019-10-10
 ^^^^^^^^^^^^^^^^^^^^
@@ -36,6 +206,8 @@ Fixed
 -----
 - Fixed the hanging HTTP call with ``ner_duckling_http`` pipeline.
 - Fixed text processing of ``intent`` attribute inside ``CountVectorFeaturizer``.
+- Fixed ``argument of type 'NoneType' is not iterable`` when using ``rasa shell``,
+  ``rasa interactive`` / ``rasa run``
 
 [1.3.8] - 2019-10-08
 ^^^^^^^^^^^^^^^^^^^^
@@ -50,8 +222,6 @@ Fixed
 - Fixed error ``Object of type 'MaxHistoryTrackerFeaturizer' is not JSON serializable``
   when running ``rasa train core``
 - Default channel ``send_`` methods no longer support kwargs as they caused issues in incompatible channels
-- Fixed ``argument of type 'NoneType' is not iterable`` when using ``rasa shell``,
-  ``rasa interactive`` / ``rasa run``
 
 [1.3.7] - 2019-09-27
 ^^^^^^^^^^^^^^^^^^^^
@@ -113,7 +283,9 @@ Changed
 
 Fixed
 -----
-- Added a check to avoid training CountVectorizer for a particular attribute of a message if no text is provided for that attribute across the training data.
+- Added a check to avoid training ``CountVectorizer`` for a particular
+  attribute of a message if no text is provided for that attribute across
+  the training data.
 - Default one-hot representation for label featurization inside ``EmbeddingIntentClassifier`` if label features don't exist.
 - Policy ensemble no longer incorrectly wrings "missing mapping policy" when
   mapping policy is present.
@@ -137,7 +309,6 @@ Fixed
 Changed
 -------
 - Pin gast to == 0.2.2
-
 
 [1.3.0] - 2019-09-05
 ^^^^^^^^^^^^^^^^^^^^
@@ -225,6 +396,13 @@ Fixed
 Removed
 -------
 - Removed ``--report`` argument from ``rasa test nlu``. All output files are stored in the ``--out`` directory.
+
+[1.2.12] - 2019-10-16
+^^^^^^^^^^^^^^^^^^^^^
+
+Added
+-----
+- Support for transit encryption with Redis via ``use_ssl: True`` in the tracker store config in endpoints.yml
 
 [1.2.11] - 2019-10-09
 ^^^^^^^^^^^^^^^^^^^^^

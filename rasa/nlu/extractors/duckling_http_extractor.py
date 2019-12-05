@@ -1,6 +1,7 @@
 import time
-
+import json
 import logging
+import warnings
 import os
 import requests
 from typing import Any, List, Optional, Text, Dict
@@ -73,7 +74,7 @@ class DucklingHTTPExtractor(EntityExtractor):
         language: Optional[Text] = None,
     ) -> None:
 
-        super(DucklingHTTPExtractor, self).__init__(component_config)
+        super().__init__(component_config)
         self.language = language
 
     @classmethod
@@ -100,10 +101,12 @@ class DucklingHTTPExtractor(EntityExtractor):
         return self.component_config.get("url")
 
     def _payload(self, text, reference_time):
+        dimensions = self.component_config["dimensions"]
         return {
             "text": text,
             "locale": self._locale(),
             "tz": self.component_config.get("timezone"),
+            "dims": json.dumps(dimensions),
             "reftime": reference_time,
         }
 
@@ -172,7 +175,7 @@ class DucklingHTTPExtractor(EntityExtractor):
             )
         else:
             extracted = []
-            logger.warning(
+            warnings.warn(
                 "Duckling HTTP component in pipeline, but no "
                 "`url` configuration in the config "
                 "file nor is `RASA_DUCKLING_HTTP_URL` "
@@ -191,7 +194,7 @@ class DucklingHTTPExtractor(EntityExtractor):
         model_dir: Text = None,
         model_metadata: Optional[Metadata] = None,
         cached_component: Optional["DucklingHTTPExtractor"] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> "DucklingHTTPExtractor":
 
         language = model_metadata.get("language") if model_metadata else None

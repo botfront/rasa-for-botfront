@@ -1,4 +1,5 @@
 import logging
+import warnings
 import multiprocessing
 import os
 import tempfile
@@ -322,14 +323,14 @@ async def _load_agent(
     except Exception as e:
         logger.debug(traceback.format_exc())
         raise ErrorResponse(
-            500, "LoadingError", "An unexpected error occurred. Error: {}".format(e)
+            500, "LoadingError", f"An unexpected error occurred. Error: {e}"
         )
 
     if not loaded_agent:
         raise ErrorResponse(
             400,
             "BadRequest",
-            "Agent with name '{}' could not be loaded.".format(model_path),
+            f"Agent with name '{model_path}' could not be loaded.",
             {"parameter": "model", "in": "query"},
         )
 
@@ -416,7 +417,8 @@ def create_app(
 
         return response.json(
             {
-                "model_file": app.agent.model_directory,
+                "model_file": app.agent.path_to_model_archive
+                or app.agent.model_directory,
                 "fingerprint": model.fingerprint_from_path(app.agent.model_directory),
                 "num_active_training_jobs": app.active_training_processes.value,
             }
@@ -442,9 +444,7 @@ def create_app(
         except Exception as e:
             logger.debug(traceback.format_exc())
             raise ErrorResponse(
-                500,
-                "ConversationError",
-                "An unexpected error occurred. Error: {}".format(e),
+                500, "ConversationError", f"An unexpected error occurred. Error: {e}"
             )
 
     @app.post("/conversations/<conversation_id>/tracker/events")
@@ -466,9 +466,9 @@ def create_app(
         events = [event for event in events if event]
 
         if not events:
-            logger.warning(
-                "Append event called, but could not extract a valid event. "
-                "Request JSON: {}".format(request.json)
+            warnings.warn(
+                f"Append event called, but could not extract a valid event. "
+                f"Request JSON: {request.json}"
             )
             raise ErrorResponse(
                 400,
@@ -490,9 +490,7 @@ def create_app(
         except Exception as e:
             logger.debug(traceback.format_exc())
             raise ErrorResponse(
-                500,
-                "ConversationError",
-                "An unexpected error occurred. Error: {}".format(e),
+                500, "ConversationError", f"An unexpected error occurred. Error: {e}"
             )
 
     @app.put("/conversations/<conversation_id>/tracker/events")
@@ -521,9 +519,7 @@ def create_app(
         except Exception as e:
             logger.debug(traceback.format_exc())
             raise ErrorResponse(
-                500,
-                "ConversationError",
-                "An unexpected error occurred. Error: {}".format(e),
+                500, "ConversationError", f"An unexpected error occurred. Error: {e}"
             )
 
     @app.get("/conversations/<conversation_id>/story")
@@ -547,9 +543,7 @@ def create_app(
         except Exception as e:
             logger.debug(traceback.format_exc())
             raise ErrorResponse(
-                500,
-                "ConversationError",
-                "An unexpected error occurred. Error: {}".format(e),
+                500, "ConversationError", f"An unexpected error occurred. Error: {e}"
             )
 
     @app.post("/conversations/<conversation_id>/execute")
@@ -587,9 +581,7 @@ def create_app(
         except Exception as e:
             logger.debug(traceback.format_exc())
             raise ErrorResponse(
-                500,
-                "ConversationError",
-                "An unexpected error occurred. Error: {}".format(e),
+                500, "ConversationError", f"An unexpected error occurred. Error: {e}"
             )
 
         tracker = get_tracker(app.agent, conversation_id)
@@ -616,9 +608,7 @@ def create_app(
         except Exception as e:
             logger.debug(traceback.format_exc())
             raise ErrorResponse(
-                500,
-                "ConversationError",
-                "An unexpected error occurred. Error: {}".format(e),
+                500, "ConversationError", f"An unexpected error occurred. Error: {e}"
             )
 
     @app.post("/conversations/<conversation_id>/messages")
@@ -658,9 +648,7 @@ def create_app(
         except Exception as e:
             logger.debug(traceback.format_exc())
             raise ErrorResponse(
-                500,
-                "ConversationError",
-                "An unexpected error occurred. Error: {}".format(e),
+                500, "ConversationError", f"An unexpected error occurred. Error: {e}"
             )
 
     @app.post("/model/train")
@@ -689,27 +677,27 @@ def create_app(
         os.mkdir(config_dir)
 
         for key in rjs["config"].keys():
-            config_file_path = os.path.join(config_dir, "{}.yml".format(key))
-            rasa.core.utils.dump_obj_as_str_to_file(config_file_path, rjs["config"][key])
-            config_paths[key] = config_file_path
+            config_path = os.path.join(config_dir, "{}.yml".format(key))
+            rasa.utils.io.write_text_file(rjs["config"][key], config_path)
+            config_paths[key] = config_path
 
         if "nlu" in rjs:
             nlu_dir = os.path.join(temp_dir, 'nlu')
             os.mkdir(nlu_dir)
 
             for key in rjs["nlu"].keys():
-                nlu_file_path = os.path.join(nlu_dir, "{}.md".format(key))
-                rasa.core.utils.dump_obj_as_str_to_file(nlu_file_path, rjs["nlu"][key]["data"])
+                nlu_path = os.path.join(nlu_dir, "{}.md".format(key))
+                rasa.utils.io.write_text_file(rjs["nlu"][key]["data"], nlu_path)
         # /bf mod
 
         if "stories" in rjs:
             stories_path = os.path.join(temp_dir, "stories.md")
-            rasa.core.utils.dump_obj_as_str_to_file(stories_path, rjs["stories"])
+            rasa.utils.io.write_text_file(rjs["stories"], stories_path)
 
         domain_path = DEFAULT_DOMAIN_PATH
         if "domain" in rjs:
             domain_path = os.path.join(temp_dir, "domain.yml")
-            rasa.core.utils.dump_obj_as_str_to_file(domain_path, rjs["domain"])
+            rasa.utils.io.write_text_file(rjs["domain"], domain_path)
 
         if rjs.get("save_to_default_model_directory", True) is True:
             model_output_directory = DEFAULT_MODELS_PATH
@@ -741,14 +729,14 @@ def create_app(
             raise ErrorResponse(
                 400,
                 "InvalidDomainError",
-                "Provided domain file is invalid. Error: {}".format(e),
+                f"Provided domain file is invalid. Error: {e}",
             )
         except Exception as e:
             logger.debug(traceback.format_exc())
             raise ErrorResponse(
                 500,
                 "TrainingError",
-                "An unexpected error occurred during training. Error: {}".format(e),
+                f"An unexpected error occurred during training. Error: {e}",
             )
         finally:
             with app.active_training_processes.get_lock():
@@ -803,7 +791,7 @@ def create_app(
             raise ErrorResponse(
                 500,
                 "TestingError",
-                "An unexpected error occurred during evaluation. Error: {}".format(e),
+                f"An unexpected error occurred during evaluation. Error: {e}",
             )
 
     @app.post("/model/test/intents")
@@ -850,7 +838,7 @@ def create_app(
             raise ErrorResponse(
                 500,
                 "TestingError",
-                "An unexpected error occurred during evaluation. Error: {}".format(e),
+                f"An unexpected error occurred during evaluation. Error: {e}",
             )
 
     @app.post("/model/predict")
@@ -876,7 +864,7 @@ def create_app(
             raise ErrorResponse(
                 400,
                 "BadRequest",
-                "Supplied events are not valid. {}".format(e),
+                f"Supplied events are not valid. {e}",
                 {"parameter": "", "in": "body"},
             )
 
@@ -901,9 +889,7 @@ def create_app(
         except Exception as e:
             logger.debug(traceback.format_exc())
             raise ErrorResponse(
-                500,
-                "PredictionError",
-                "An unexpected error occurred. Error: {}".format(e),
+                500, "PredictionError", f"An unexpected error occurred. Error: {e}"
             )
 
     @app.post("/model/parse")
@@ -941,9 +927,7 @@ def create_app(
             except Exception as e:
                 logger.debug(traceback.format_exc())
                 raise ErrorResponse(
-                    400,
-                    "ParsingError",
-                    "An unexpected error occurred. Error: {}".format(e),
+                    400, "ParsingError", f"An unexpected error occurred. Error: {e}"
                 )
             response_data = emulator.normalise_response_json(parsed_data)
 
@@ -952,7 +936,7 @@ def create_app(
         except Exception as e:
             logger.debug(traceback.format_exc())
             raise ErrorResponse(
-                500, "ParsingError", "An unexpected error occurred. Error: {}".format(e)
+                500, "ParsingError", f"An unexpected error occurred. Error: {e}"
             )
 
     @app.put("/model")
@@ -972,7 +956,7 @@ def create_app(
                 raise ErrorResponse(
                     400,
                     "BadRequest",
-                    "Supplied 'model_server' is not valid. Error: {}".format(e),
+                    f"Supplied 'model_server' is not valid. Error: {e}",
                     {"parameter": "model_server", "in": "body"},
                 )
 
@@ -980,7 +964,7 @@ def create_app(
             model_path, model_server, remote_storage, endpoints, app.agent.lock_store
         )
 
-        logger.debug("Successfully loaded model '{}'.".format(model_path))
+        logger.debug(f"Successfully loaded model '{model_path}'.")
         return response.json(None, status=204)
 
     @app.delete("/model")
@@ -990,7 +974,7 @@ def create_app(
 
         app.agent = Agent(lock_store=app.agent.lock_store)
 
-        logger.debug("Successfully unloaded model '{}'.".format(model_file))
+        logger.debug(f"Successfully unloaded model '{model_file}'.")
         return response.json(None, status=204)
 
     @app.get("/domain")
@@ -1045,11 +1029,9 @@ def create_app(
         output_path = os.path.join(out_dir, "output")
         # botfront: several nlu files
         if type(rjs["data"] is dict):
-            from rasa.core.utils import dump_obj_as_json_to_file
-            dump_obj_as_json_to_file(nlu_data_path, rjs["data"])
+            rasa.utils.io.dump_obj_as_json_to_file(nlu_data_path, rjs["data"])
         else:
-            dump_obj_as_str_to_file(nlu_data_path, rjs["data"])
-
+            rasa.utils.io.write_text_file(nlu_data_path, rjs["data"])
         # botfront end
         from rasa.nlu.convert import convert_training_data
         convert_training_data(nlu_data_path, output_path, rjs["output_format"], rjs["language"])

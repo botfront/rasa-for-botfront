@@ -45,9 +45,6 @@ out/
 tmp_training_data.json
 .DS_Store
 models/
-test_models/model_*
-test_models/test_model_keyword
-test_models/test_model_pretrained_embeddings
 .mypy_cache/
 *.tar.gz
 docs/nlu/key
@@ -84,3 +81,8 @@ errors.json
 #_project
 pip-wheel-metadata/*
 events.db
+*.swp
+*.coverage*
+env
+venv
+.dir-locals.el

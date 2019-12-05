@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # -- General configuration ------------------------------------------------
 import re
@@ -62,7 +61,7 @@ author = "Rasa Technologies"
 #
 # The short X.Y version.
 __version__ = None
-exec (open("../rasa/version.py").read())
+exec(open("../rasa/version.py").read())
 version = ".".join(__version__.split(".")[:2])
 # The full version, including alpha/beta/rc tags.
 release = __version__
@@ -324,9 +323,7 @@ os.chdir(os.path.abspath('..'))
 
 # extlinks configuration
 
-extlinks = {
-    "gh-code": ("https://github.com/RasaHQ/rasa/tree/{}/%s".format(release), "github ")
-}
+extlinks = {"gh-code": (f"https://github.com/RasaHQ/rasa/tree/{release}/%s", "github ")}
 
 # Sphinxcontrib configuration
 scv_priority = "tags"
@@ -336,7 +333,16 @@ scv_sort = ("semver",)
 scv_whitelist_branches = (re.compile("^master$"),)
 # scv_whitelist_tags = ('None',)
 scv_grm_exclude = ("README.md", ".gitignore", ".nojekyll", "CNAME")
-scv_whitelist_tags = (re.compile(r"^[1-9]+\.[0-9]+\.\d+$"),)
+scv_whitelist_tags = (
+    re.compile(r"^[2-9]+\.\d+\.\d+$"),
+    re.compile(r"^1\.[6789]+\.\d+$"),
+    re.compile(r"^1\.5\.\d+$"),
+    re.compile(r"^1\.4\.6$"),
+    re.compile(r"^1\.3\.10$"),
+    re.compile(r"^1\.2\.9$"),
+    re.compile(r"^1\.1\.8$"),
+    re.compile(r"^1\.0\.9$"),
+)
 scv_greatest_tag = True
 
 # type classes for nitpicky to ignore
@@ -392,4 +398,4 @@ def setup(sphinx):
 
         sphinx.add_lexer("story", StoryLexer())
     except ImportError:
-        print ("No Story Lexer :( Sad times!")
+        print("No Story Lexer :( Sad times!")

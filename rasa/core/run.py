@@ -1,4 +1,5 @@
 import asyncio
+import warnings
 import logging
 import os
 import shutil
@@ -9,10 +10,10 @@ from sanic import Sanic
 
 import rasa.core.utils
 import rasa.utils
-import rasa.utils.io
 import rasa.utils.common
-from rasa import model
-from rasa import server
+import rasa.utils.io
+from rasa import model, server
+from rasa.constants import ENV_SANIC_BACKLOG
 from rasa.core import agent, channels, constants
 from rasa.core.agent import Agent
 from rasa.core.channels import console
@@ -187,9 +188,10 @@ def serve_application(
         "before_server_start",
     )
 
-    async def clear_model_files(app: Sanic, _loop: Text) -> None:
+    # noinspection PyUnresolvedReferences
+    async def clear_model_files(_app: Sanic, _loop: Text) -> None:
         if app.agent.model_directory:
-            shutil.rmtree(app.agent.model_directory)
+            shutil.rmtree(_app.agent.model_directory)
 
     app.register_listener(clear_model_files, "after_server_stop")
 
@@ -199,7 +201,10 @@ def serve_application(
         host="0.0.0.0",
         port=port,
         ssl=ssl_context,
-        backlog=int(os.environ.get("SANIC_BACKLOG", "100")),
+        backlog=int(os.environ.get(ENV_SANIC_BACKLOG, "100")),
+        workers=rasa.core.utils.number_of_sanic_workers(
+            endpoints.lock_store if endpoints else None
+        ),
     )
 
 
@@ -217,6 +222,7 @@ async def load_agent_on_start(
     (hence the `app` and `loop` arguments)."""
     import rasa.core.brokers.utils as broker_utils
 
+    # noinspection PyBroadException
     try:
         with model.get_model(model_path) as unpacked_model:
             # bf mod
@@ -226,8 +232,8 @@ async def load_agent_on_start(
                 _interpreters[lang] = NaturalLanguageInterpreter.create(nlu_model_path, endpoints.nlu)
             # /bf mod
     except Exception:
-        logger.debug("Could not load interpreter from '{}'".format(model_path))
-        _interpreters = {}
+        logger.debug(f"Could not load interpreter from '{model_path}'.")
+        _interpreter = {}
 
     _broker = broker_utils.from_endpoint_config(endpoints.event_broker)
     _tracker_store = TrackerStore.find_tracker_store(
@@ -249,7 +255,7 @@ async def load_agent_on_start(
     )
 
     if not app.agent:
-        logger.warning(
+        warnings.warn(
             "Agent could not be loaded with the provided configuration. "
             "Load default agent without any model."
         )
