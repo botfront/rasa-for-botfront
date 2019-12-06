@@ -25,15 +25,6 @@ def nlg_response_format_spec():
     }
 
 
-# botfront: response format spec for sequences
-def nlg_response_botfront_format_spec():
-    """Expected response schema for an NLG endpoint with Botfront."""
-    return {
-        "type" : "array",
-        "items" : nlg_request_format_spec(),
-    }
-
-
 def nlg_request_format_spec():
     """Expected request schema for requests sent to an NLG endpoint."""
 
@@ -97,7 +88,13 @@ class CallbackNaturalLanguageGenerator(NaturalLanguageGenerator):
     ) -> List[Dict[Text, Any]]:
         """Retrieve a named template from the domain using an endpoint."""
 
-        body = nlg_request_format(template_name, tracker, output_channel, **kwargs)
+        body = nlg_request_format(
+            template_name,
+            tracker,
+            output_channel,
+            **kwargs,
+            language=tracker.latest_message.metadata["language"],
+        )  # bf mod: added language in **kwargs
 
         logger.debug(
             "Requesting NLG for {} from {}."
@@ -118,7 +115,6 @@ class CallbackNaturalLanguageGenerator(NaturalLanguageGenerator):
             logger.error("NLG web endpoint returned an invalid response.")
             return [{"text": template_name}]
 
-
     @staticmethod
     def validate_response(content: Optional[Dict[Text, Any]]) -> bool:
         """Validate the NLG response. Raises exception on failure."""
@@ -131,8 +127,7 @@ class CallbackNaturalLanguageGenerator(NaturalLanguageGenerator):
                 # means the endpoint did not want to respond with anything
                 return True
             else:
-                # botfront: response format spec for sequences
-                validate(content, nlg_response_botfront_format_spec())
+                validate(content, nlg_response_format_spec())
                 return True
         except ValidationError as e:
             e.message += (

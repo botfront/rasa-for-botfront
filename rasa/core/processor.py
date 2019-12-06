@@ -333,14 +333,14 @@ class MessageProcessor:
                 message.text, message.message_id, tracker
             )
         else:
-            lang = message.output_channel.language
-            # bf: interpreter by language or RegexInterpreter for Core only model
+            # bf mod >
+            lang = (message.metadata or {}).get("language")
             from rasa.core.interpreter import NaturalLanguageInterpreter
             if isinstance(self.interpreters, dict):
                 parse_data = await self.interpreters.get(lang).parse(message.text, message.message_id, tracker)
             elif isinstance(self.interpreters, NaturalLanguageInterpreter):
                 parse_data = await self.interpreters.parse(message.text, message.message_id, tracker)
-            # bf: end
+            # </ bf mod
         logger.debug(
             "Received user message '{}' with intent '{}' "
             "and entities '{}'".format(
