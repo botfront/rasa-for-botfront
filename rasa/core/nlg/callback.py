@@ -1,5 +1,5 @@
 import logging
-from typing import Text, Any, Dict, Optional, List
+from typing import Text, Any, Dict, Optional
 
 from rasa.core.constants import DEFAULT_REQUEST_TIMEOUT
 from rasa.core.nlg.generator import NaturalLanguageGenerator
@@ -11,7 +11,6 @@ logger = logging.getLogger(__name__)
 
 def nlg_response_format_spec():
     """Expected response schema for an NLG endpoint.
-
     Used for validation of the response returned from the NLG endpoint."""
     return {
         "type": "object",
@@ -69,7 +68,6 @@ def nlg_request_format(
 
 class CallbackNaturalLanguageGenerator(NaturalLanguageGenerator):
     """Generate bot utterances by using a remote endpoint for the generation.
-
     The generator will call the endpoint for each message it wants to
     generate. The endpoint needs to respond with a properly formatted
     json. The generator will use this message to create a response for
@@ -85,35 +83,24 @@ class CallbackNaturalLanguageGenerator(NaturalLanguageGenerator):
         tracker: DialogueStateTracker,
         output_channel: Text,
         **kwargs: Any,
-    ) -> List[Dict[Text, Any]]:
+    ) -> Dict[Text, Any]:
         """Retrieve a named template from the domain using an endpoint."""
 
-        body = nlg_request_format(
-            template_name,
-            tracker,
-            output_channel,
-            **kwargs,
-            language=tracker.latest_message.metadata["language"],
-        )  # bf mod: added language in **kwargs
+        body = nlg_request_format(template_name, tracker, output_channel, **kwargs)
 
         logger.debug(
             "Requesting NLG for {} from {}."
             "".format(template_name, self.nlg_endpoint.url)
         )
 
-        try:
-            response = await self.nlg_endpoint.request(
-                method="post", json=body, timeout=DEFAULT_REQUEST_TIMEOUT
-            )
-        except Exception as e:
-            logger.error("NLG web endpoint returned an invalid response: {}".format(e))
-            return [{"text": template_name}]
+        response = await self.nlg_endpoint.request(
+            method="post", json=body, timeout=DEFAULT_REQUEST_TIMEOUT
+        )
 
         if self.validate_response(response):
             return response
         else:
-            logger.error("NLG web endpoint returned an invalid response.")
-            return [{"text": template_name}]
+            raise Exception("NLG web endpoint returned an invalid response.")
 
     @staticmethod
     def validate_response(content: Optional[Dict[Text, Any]]) -> bool:

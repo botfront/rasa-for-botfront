@@ -19,19 +19,13 @@ class TemplatedNaturalLanguageGenerator(NaturalLanguageGenerator):
     def __init__(self, templates: Dict[Text, List[Dict[Text, Any]]]) -> None:
         self.templates = templates
 
-    def _templates_for_utter_action(
-        self, utter_action, output_channel, **kwargs
-    ):  # bf mod: add kwargs
+    def _templates_for_utter_action(self, utter_action, output_channel):
         """Return array of templates that fit the channel and action."""
 
         channel_templates = []
         default_templates = []
 
-        language = kwargs["language"]
-        if not language or language not in self.templates[utter_action]:
-            return None
-        for seq in self.templates[utter_action][language]:  # bf mod: add language
-            template = seq[0]  # bf temp: use first message in seq
+        for template in self.templates[utter_action]:
             if template.get("channel") == output_channel:
                 channel_templates.append(template)
             elif not template.get("channel"):
@@ -45,10 +39,7 @@ class TemplatedNaturalLanguageGenerator(NaturalLanguageGenerator):
 
     # noinspection PyUnusedLocal
     def _random_template_for(
-        self,
-        utter_action: Text,
-        output_channel: Text,
-        **kwargs: Any,  # bf mod: add kwargs
+        self, utter_action: Text, output_channel: Text
     ) -> Optional[Dict[Text, Any]]:
         """Select random template for the utter action from available ones.
         If channel-specific templates for the current output channel are given,
@@ -58,7 +49,7 @@ class TemplatedNaturalLanguageGenerator(NaturalLanguageGenerator):
 
         if utter_action in self.templates:
             suitable_templates = self._templates_for_utter_action(
-                utter_action, output_channel, **kwargs  # bf mod: add kwargs
+                utter_action, output_channel
             )
 
             if suitable_templates:
@@ -79,13 +70,7 @@ class TemplatedNaturalLanguageGenerator(NaturalLanguageGenerator):
 
         filled_slots = tracker.current_slot_values()
         return self.generate_from_slots(
-            template_name,
-            filled_slots,
-            output_channel,
-            **kwargs,
-            language=tracker.latest_message.metadata[
-                "language"
-            ],  # bf mod: added language in **kwargs
+            template_name, filled_slots, output_channel, **kwargs
         )
 
     def generate_from_slots(
@@ -98,9 +83,7 @@ class TemplatedNaturalLanguageGenerator(NaturalLanguageGenerator):
         """Generate a response for the requested template."""
 
         # Fetching a random template for the passed template name
-        r = copy.deepcopy(
-            self._random_template_for(template_name, output_channel, **kwargs)
-        )  # bf mod: add kwargs
+        r = copy.deepcopy(self._random_template_for(template_name, output_channel))
         # Filling the slots in the template and returning the template
         if r is not None:
             return self._fill_template(r, filled_slots, **kwargs)
