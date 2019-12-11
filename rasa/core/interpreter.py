@@ -158,7 +158,6 @@ class RegexInterpreter(NaturalLanguageInterpreter):
         text: Text,
         message_id: Optional[Text] = None,
         tracker: DialogueStateTracker = None,
-        params: Optional[Dict] = None,
     ) -> Dict[Text, Any]:
         """Parse a text message."""
 

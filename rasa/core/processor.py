@@ -337,6 +337,8 @@ class MessageProcessor:
             lang = (message.metadata or {}).get("language")
             from rasa.core.interpreter import NaturalLanguageInterpreter
             if isinstance(self.interpreters, dict):
+                if not self.interpreters.get(lang):
+                    raise ValueError(f"No trained model for language {lang} found.")
                 parse_data = await self.interpreters.get(lang).parse(message.text, message.message_id, tracker)
             elif isinstance(self.interpreters, NaturalLanguageInterpreter):
                 parse_data = await self.interpreters.parse(message.text, message.message_id, tracker)
