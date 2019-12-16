@@ -917,11 +917,11 @@ def create_app(
                 if isinstance(app.agent.interpreters, dict):
                     parsed_data = await app.agent.interpreters.get(
                         request.json.get("lang")).parse(
-                            data.get("text"), data.get("message_id"), params=dict(request.query_args)
+                            data.get("text"), data.get("message_id"),
                         )
                 elif isinstance(app.agent.interpreters, NaturalLanguageInterpreter):
                     parsed_data = await app.agent.interpreters.parse(
-                        data.get("text"), data.get("message_id"), params=dict(request.query_args)
+                        data.get("text"), data.get("message_id"),
                     )
                 # bf: end
             except Exception as e:

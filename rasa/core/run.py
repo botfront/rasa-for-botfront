@@ -223,17 +223,17 @@ async def load_agent_on_start(
     import rasa.core.brokers.utils as broker_utils
 
     # noinspection PyBroadException
+    # bf mod
     try:
         with model.get_model(model_path) as unpacked_model:
-            # bf mod
             _, nlu_models = model.get_model_subdirectories(unpacked_model)
             _interpreters = {}
             for lang, nlu_model_path in nlu_models.items():
                 _interpreters[lang] = NaturalLanguageInterpreter.create(nlu_model_path, endpoints.nlu)
-            # /bf mod
     except Exception:
         logger.debug(f"Could not load interpreter from '{model_path}'.")
-        _interpreter = {}
+        _interpreters = {}
+    # /bf mod
 
     _broker = broker_utils.from_endpoint_config(endpoints.event_broker)
     _tracker_store = TrackerStore.find_tracker_store(
