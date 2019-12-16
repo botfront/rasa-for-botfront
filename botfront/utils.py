@@ -30,7 +30,7 @@ def auto_retry(function):
         resp = None
         while not resp:
             if tries != 1:
-                time.sleep(10)
+                time.sleep(.5)
             logger.debug(f"Trying to fetch config from server (retry #{str(tries)})")
             resp = await function()
             tries += 1
