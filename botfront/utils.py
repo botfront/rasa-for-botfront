@@ -48,12 +48,14 @@ async def get_config_via_graphql(bf_url, project_id):
     @auto_retry
     async def load():
         try:
-            return endpoint(CONFIG_QUERY, {"projectId": project_id})
+            response = endpoint(CONFIG_QUERY, {"projectId": project_id})
+            if "errors" in response and response["errors"]: raise urllib.error.URLError("Null response.")
+            return endpoint(CONFIG_QUERY, {"projectId": project_id})["data"]
         except urllib.error.URLError:
             return None
 
     data = await load()
-    return data["data"]["getConfig"]
+    return data["getConfig"]
 
 
 async def get_config_via_legacy_route(bf_url, project_id):
