@@ -179,6 +179,8 @@ async def _train_async_internal(
         )
 
     # bf mod >
+    if fingerprint_comparison.nlu == True: # replace True with list of all langs
+        fingerprint_comparison.nlu = list(new_fingerprint.get("nlu-config", {}).keys())
     domain = await file_importer.get_domain()
     core_untrainable = domain.is_empty() or stories.is_empty()
     nlu_untrainable = [l for l, d in nlu_data.items() if d.is_empty()]

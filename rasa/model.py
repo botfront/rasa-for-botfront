@@ -78,7 +78,7 @@ SECTION_NLG = Section(name="NLG templates", relevant_keys=[FINGERPRINT_NLG_KEY])
 class FingerprintComparisonResult:
     def __init__(
         self,
-        nlu: bool = [], # bf mod
+        nlu: bool = True,
         core: bool = True,
         nlg: bool = True,
         force_training: bool = False,
