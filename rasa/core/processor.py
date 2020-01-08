@@ -334,11 +334,16 @@ class MessageProcessor:
             )
         else:
             # bf mod >
-            lang = (message.metadata or {}).get("language")
+            fallback_language_slot = tracker.slots.get("fallback_language")
+            fallback_language = fallback_language_slot.initial_value if fallback_language_slot else None
+            lang = (message.metadata or {}).get("language") or fallback_language
             from rasa.core.interpreter import NaturalLanguageInterpreter
             if isinstance(self.interpreters, dict):
-                if not self.interpreters.get(lang):
-                    raise ValueError(f"No trained model for language {lang} found.")
+                if not self.interpreters.get(lang) and fallback_language and lang != fallback_language:
+                    logger.warning(f"No trained model for language {lang} found. Using default {fallback_language} instead.")
+                    lang = fallback_language
+                elif not self.interpreters.get(lang):
+                    raise ValueError(f"No trained model for language {lang} found, and not default language set.")
                 parse_data = await self.interpreters.get(lang).parse(message.text, message.message_id, tracker)
             elif isinstance(self.interpreters, NaturalLanguageInterpreter):
                 parse_data = await self.interpreters.parse(message.text, message.message_id, tracker)
