@@ -1028,10 +1028,10 @@ def create_app(
         nlu_data_path = os.path.join(temp_dir, "nlu_data")
         output_path = os.path.join(out_dir, "output")
         # botfront: several nlu files
-        if type(rjs["data"] is dict):
+        if type(rjs["data"]) is dict:
             rasa.utils.io.dump_obj_as_json_to_file(nlu_data_path, rjs["data"])
         else:
-            rasa.utils.io.write_text_file(nlu_data_path, rjs["data"])
+            rasa.utils.io.write_text_file(rjs["data"], nlu_data_path)
         # botfront end
         from rasa.nlu.convert import convert_training_data
         convert_training_data(nlu_data_path, output_path, rjs["output_format"], rjs["language"])
