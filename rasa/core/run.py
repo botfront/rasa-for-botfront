@@ -4,9 +4,7 @@ import logging
 import os
 import shutil
 from functools import partial
-from typing import List, Optional, Text, Union
-
-from sanic import Sanic
+from typing import Any, List, Optional, Text, Union
 
 import rasa.core.utils
 import rasa.utils
@@ -16,12 +14,15 @@ from rasa import model, server
 from rasa.constants import ENV_SANIC_BACKLOG
 from rasa.core import agent, channels, constants
 from rasa.core.agent import Agent
+from rasa.core.brokers.broker import EventBroker
 from rasa.core.channels import console
 from rasa.core.channels.channel import InputChannel
 from rasa.core.interpreter import NaturalLanguageInterpreter
 from rasa.core.lock_store import LockStore
 from rasa.core.tracker_store import TrackerStore
 from rasa.core.utils import AvailableEndpoints
+from rasa.utils.common import raise_warning
+from sanic import Sanic
 
 logger = logging.getLogger()  # get the root logger
 
@@ -49,7 +50,7 @@ def create_http_input_channels(
         return [_create_single_channel(c, k) for c, k in all_credentials.items()]
 
 
-def _create_single_channel(channel, credentials):
+def _create_single_channel(channel, credentials) -> Any:
     from rasa.core.channels import BUILTIN_CHANNELS
 
     if channel in BUILTIN_CHANNELS:
@@ -129,7 +130,7 @@ def configure_app(
             )
 
             logger.info("Killing Sanic server now.")
-            running_app.stop()  # kill the sanic serverx
+            running_app.stop()  # kill the sanic server
 
         app.add_task(run_cmdline_io)
 
@@ -220,7 +221,6 @@ async def load_agent_on_start(
 
     Used to be scheduled on server start
     (hence the `app` and `loop` arguments)."""
-    import rasa.core.brokers.utils as broker_utils
 
     # noinspection PyBroadException
     # bf mod
@@ -228,18 +228,16 @@ async def load_agent_on_start(
         with model.get_model(model_path) as unpacked_model:
             _, nlu_models = model.get_model_subdirectories(unpacked_model)
             _interpreters = {}
-            for lang, nlu_model_path in nlu_models.items():
-                _interpreters[lang] = NaturalLanguageInterpreter.create(nlu_model_path, endpoints.nlu)
+            for lang, nlu_model in nlu_models.items():
+                _interpreters[lang] = NaturalLanguageInterpreter.create(endpoints.nlu or nlu_model)
     except Exception:
         logger.debug(f"Could not load interpreter from '{model_path}'.")
         _interpreters = {}
     # /bf mod
 
-    _broker = broker_utils.from_endpoint_config(endpoints.event_broker)
-    _tracker_store = TrackerStore.find_tracker_store(
-        None, endpoints.tracker_store, _broker
-    )
-    _lock_store = LockStore.find_lock_store(endpoints.lock_store)
+    _broker = EventBroker.create(endpoints.event_broker)
+    _tracker_store = TrackerStore.create(endpoints.tracker_store, event_broker=_broker)
+    _lock_store = LockStore.create(endpoints.lock_store)
 
     model_server = endpoints.model if endpoints and endpoints.model else None
 
@@ -255,7 +253,7 @@ async def load_agent_on_start(
     )
 
     if not app.agent:
-        warnings.warn(
+        raise_warning(
             "Agent could not be loaded with the provided configuration. "
             "Load default agent without any model."
         )

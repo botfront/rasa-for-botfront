@@ -61,9 +61,9 @@ def test_get_latest_model(trained_model):
 
 def test_get_model_from_directory(trained_model):
     unpacked = get_model(trained_model)
-
     assert os.path.exists(os.path.join(unpacked, DEFAULT_CORE_SUBDIRECTORY_NAME))
-    assert os.path.exists(os.path.join(unpacked, "nlu"))
+    assert os.path.exists(os.path.join(unpacked, "nlu-en"))
+    assert os.path.exists(os.path.join(unpacked, "nlu-fr"))
 
 
 def test_get_model_context_manager(trained_model):
@@ -103,10 +103,10 @@ def test_get_model_from_directory_nlu_only(trained_model):
 
 
 def _fingerprint(
-    config: Optional[Text] = None,
-    config_nlu: Optional[Dict[Text, Text]] = None,
-    config_core: Optional[Text] = None,
-    domain: Optional[int] = None,
+    config: Optional[Any] = None,
+    config_nlu: Optional[Any] = None,
+    config_core: Optional[Any] = None,
+    domain: Optional[Any] = None,
     nlg: Optional[Any] = None,
     stories: Optional[Any] = None,
     nlu: Optional[Any] = None,
@@ -251,13 +251,7 @@ def test_nlu_fingerprint_changed_all(fingerprint2):
             "old": _fingerprint(config='', config_nlu={}, nlu={}),
             "new": _fingerprint(config='', config_nlu={'en': 'e50f96c444c3804c4bb249b8a802948b'}, nlu={'en': 'asdasdasdasd'}),
             "retrain_nlu": ["en"],
-        }
-        # {
-        #     "old": _fingerprint(config_nlu={"en": "en"}, nlu={}),
-        #     "new": _fingerprint(config_nlu={"en": "en"}, nlu={"en": "test_en"}),
-        #     "retrain_core": False,
-        #     "retrain_nlu": ["en"],
-        # },
+        },
     ],
 )
 def test_nlu_fingerprint_languages_changed(fingerprint):
@@ -273,6 +267,9 @@ def test_nlu_fingerprint_languages_changed(fingerprint):
 )
 def test_nlu_fingerprint_changed_fr(fingerprint2):
     fingerprint1 = _fingerprint()
+    assert (
+        did_section_fingerprint_change(fingerprint1, fingerprint2, SECTION_NLU) == ["fr"]
+    )
     assert did_section_fingerprint_change(fingerprint1, fingerprint2, SECTION_NLU) == ["fr"]
 
 
@@ -377,12 +374,14 @@ async def test_rasa_packaging(trained_model, project, use_fingerprint):
             "old": _fingerprint(),
             "retrain_core": False,
             "retrain_nlu": ["en", "fr"],
+            "retrain_nlg": False,
         },
         {
             "new": _fingerprint(nlu={"en": "test_en_changed", "fr": "test_fr"}),
             "old": _fingerprint(),
             "retrain_core": False,
             "retrain_nlu": ["en"],
+            "retrain_nlg": False,
         },
         {
             "new": _fingerprint(config="others"),
@@ -403,12 +402,14 @@ async def test_rasa_packaging(trained_model, project, use_fingerprint):
             "old": _fingerprint(),
             "retrain_core": False,
             "retrain_nlu": ["fr"],
+            "retrain_nlg": False,
         },
         {
             "new": _fingerprint(config_nlu={"en": "test_en_changed", "fr": "test_fr_changed"}),
             "old": _fingerprint(),
             "retrain_core": False,
             "retrain_nlu": ["en", "fr"],
+            "retrain_nlg": False,
         },
         {
             "new": _fingerprint(config_nlu={"en": "test_en_changed", "fr": "test_fr"}),
@@ -429,37 +430,36 @@ async def test_rasa_packaging(trained_model, project, use_fingerprint):
             "old": _fingerprint(nlu={}, config_nlu={}),
             "retrain_core": False,
             "retrain_nlu": ["en", "fr"],
+            "retrain_nlg": False,
         },
         {
             "new": _fingerprint(nlu={}),
             "old": _fingerprint(nlu={"en": "test_en", "fr": "test_fr_changed"}),
             "retrain_core": False,
             "retrain_nlu": ["en", "fr"],
+            "retrain_nlg": False,
         },
         {
             "old": _fingerprint(nlu={}, config_nlu={}),
             "new": _fingerprint(nlu={"en": "test_en"}, config_nlu={"en": "test_en"}),
             "retrain_core": False,
             "retrain_nlu": ["en"],
+            "retrain_nlg": False,
         },
         {
             "old": _fingerprint(nlu={"en": "test_en"}, config_nlu={"en": "test_en"}),
             "new": _fingerprint(nlu={"en": "test_en", "fr": "test_fr_changed"}, config_nlu={"en": "test_en", "fr": "test_fr_changed"}),
             "retrain_core": False,
             "retrain_nlu": ["fr"],
+            "retrain_nlg": False,
         },
         {
             "new": _fingerprint(nlu={"en": "test_en_changed", "fr": "test_fr"}, config_nlu={"en": "test_en", "fr": "test_fr"}),
             "old": _fingerprint(nlu={"en": "test_en", "fr": "test_fr"}, config_nlu={"en": "test_en", "fr": "test_fr"}),
             "retrain_core": False,
             "retrain_nlu": ["en"],
+            "retrain_nlg": False,
         },
-        # {
-        #     "old": _fingerprint(config_nlu={"en": "en"}, nlu={}),
-        #     "new": _fingerprint(config_nlu={"en": "en"}, nlu={"en": "test_en"}),
-        #     "retrain_core": False,
-        #     "retrain_nlu": ["en"],
-        # },
     ],
 )
 def test_should_retrain(trained_model: Text, fingerprint: Fingerprint):
@@ -469,7 +469,7 @@ def test_should_retrain(trained_model: Text, fingerprint: Fingerprint):
 
     assert retrain.should_retrain_core() == fingerprint["retrain_core"]
     assert retrain.should_retrain_nlg() == fingerprint["retrain_nlg"]
-    assert retrain.should_retrain_nlu() == fingerprint["retrain_nlu"]
+    assert set(retrain.should_retrain_nlu()) == set(fingerprint["retrain_nlu"])
 
 
 def set_fingerprint(trained_model: Text, fingerprint: Fingerprint) -> Text:

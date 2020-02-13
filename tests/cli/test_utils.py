@@ -29,6 +29,19 @@ def make_actions_subdir():
             os.chdir(cwd)
 
 
+@contextlib.contextmanager
+def make_actions_subdir():
+    """Create a subdir called actions to test model argument handling."""
+    with tempfile.TemporaryDirectory() as tempdir:
+        cwd = os.getcwd()
+        os.chdir(tempdir)
+        try:
+            (pathlib.Path(tempdir) / "actions").mkdir()
+            yield
+        finally:
+            os.chdir(cwd)
+
+
 @pytest.mark.parametrize(
     "argv",
     [
@@ -98,7 +111,7 @@ def test_validate_with_invalid_directory_if_default_is_valid(caplog: LogCaptureF
     with pytest.warns(UserWarning) as record:
         assert get_validated_path(invalid_directory, "out", tempdir) == tempdir
     assert len(record) == 1
-    assert "does not exist" in record[0].message.args[0]
+    assert "does not seem to exist" in record[0].message.args[0]
 
 
 def test_print_error_and_exit():

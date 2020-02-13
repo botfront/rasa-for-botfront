@@ -1,2 +1,4 @@
-__version__ = "1.5.1"
-__bf_patch__ = "-bf.14"
+# this file will automatically be changed,
+# do not add anything but the version number here!
+__version__ = "1.7.1"
+__bf_patch__ = "-bf.1"
