@@ -70,7 +70,7 @@ def _validate_model_path(model_path: Text, parameter: Text, default: Text):
 def run(args: argparse.Namespace):
     import rasa.run
     # botfront:start
-    from botfront.utils import set_endpoints_credentials_args_from_remote
+    from rasa.utils.botfront import set_endpoints_credentials_args_from_remote
     set_endpoints_credentials_args_from_remote(args)
     # botfront:end
 
