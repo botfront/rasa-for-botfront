@@ -55,6 +55,9 @@ RUN pip install .[sql]
 
 # Install Rasa Addons
 RUN pip install -Iv rasa-addons==0.9.9
+# https://github.com/RasaHQ/rasa/issues/5196
+RUN pip uninstall -y gym
+RUN pip install -Iv gym==0.15.4
 
 # Runtime stage which uses the virtualenv which we built in the previous stage
 FROM base AS runner
