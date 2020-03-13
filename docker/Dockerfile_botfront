@@ -70,6 +70,9 @@ WORKDIR /app
 # Create a volume for temporary data
 VOLUME /tmp
 
+# Create a volume for models
+VOLUME /app/models
+
 # # Make sure the default group has the same permissions as the owner
 # RUN chgrp -R 0 . && chmod -R g=u .
 
