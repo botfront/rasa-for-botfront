@@ -80,12 +80,16 @@ def _load_and_set_updated_model(
 
     # bf mod
     core_path, nlu_paths = get_model_subdirectories(model_directory)
-
     interpreters = {}
     # If NLU models exist then create interpreters from them
     if len(nlu_paths):
+        from rasa.nlu.model import UnsupportedModelError
         for lang, nlu_path in nlu_paths.items():
-            interpreters[lang] = NaturalLanguageInterpreter.create(os.path.join(model_directory, nlu_path))
+            try:
+                interpreters[lang] = NaturalLanguageInterpreter.create(os.path.join(model_directory, nlu_path))
+            except UnsupportedModelError as e:
+                if not len(interpreters): logger.warning(e.message)
+                interpreters[lang] = RegexInterpreter()
     # If no NLU models exist, then associate a RegexInterpreter to the language code found in the fingerprints,
     # that should correspond to the default language in Botfront. This is to make sure an interpreter is available
     # when training stories without NLU
