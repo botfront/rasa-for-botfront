@@ -995,13 +995,13 @@ def create_app(
             try:
                 # bf: get query args
                 from rasa.core.interpreter import NaturalLanguageInterpreter
-                if isinstance(app.agent.interpreters, dict):
-                    parsed_data = await app.agent.interpreters.get(
+                if isinstance(app.agent.interpreter, dict):
+                    parsed_data = await app.agent.interpreter.get(
                         request.json.get("lang")).parse(
                             data.get("text"), data.get("message_id"),
                         )
-                elif isinstance(app.agent.interpreters, NaturalLanguageInterpreter):
-                    parsed_data = await app.agent.interpreters.parse(
+                elif isinstance(app.agent.interpreter, NaturalLanguageInterpreter):
+                    parsed_data = await app.agent.interpreter.parse(
                         data.get("text"), data.get("message_id"),
                     )
                 # bf: end

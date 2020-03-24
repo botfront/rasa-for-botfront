@@ -66,7 +66,7 @@ DEFAULT_INTENTS = [
 class MessageProcessor:
     def __init__(
         self,
-        interpreters: Dict[Text, NaturalLanguageInterpreter],
+        interpreter: Dict[Text, NaturalLanguageInterpreter],
         policy_ensemble: PolicyEnsemble,
         domain: Domain,
         tracker_store: TrackerStore,
@@ -76,7 +76,7 @@ class MessageProcessor:
         message_preprocessor: Optional[LambdaType] = None,
         on_circuit_break: Optional[LambdaType] = None,
     ):
-        self.interpreters = interpreters
+        self.interpreter = interpreter
         self.nlg = generator
         self.policy_ensemble = policy_ensemble
         self.domain = domain
@@ -434,15 +434,15 @@ class MessageProcessor:
             fallback_language = fallback_language_slot.initial_value if fallback_language_slot else None
             lang = (message.metadata or {}).get("language") or fallback_language
             from rasa.core.interpreter import NaturalLanguageInterpreter
-            if isinstance(self.interpreters, dict):
-                if not self.interpreters.get(lang) and fallback_language and lang != fallback_language:
+            if isinstance(self.interpreter, dict):
+                if not self.interpreter.get(lang) and fallback_language and lang != fallback_language:
                     logger.warning(f"No trained model for language {lang} found. Using default {fallback_language} instead.")
                     lang = fallback_language
-                elif not self.interpreters.get(lang):
+                elif not self.interpreter.get(lang):
                     raise ValueError(f"No trained model for language {lang} found, and not default language set.")
-                parse_data = await self.interpreters.get(lang).parse(message.text, message.message_id, tracker)
-            elif isinstance(self.interpreters, NaturalLanguageInterpreter):
-                parse_data = await self.interpreters.parse(message.text, message.message_id, tracker)
+                parse_data = await self.interpreter.get(lang).parse(message.text, message.message_id, tracker)
+            elif isinstance(self.interpreter, NaturalLanguageInterpreter):
+                parse_data = await self.interpreter.parse(message.text, message.message_id, tracker)
             # </ bf mod
         logger.debug(
             "Received user message '{}' with intent '{}' "

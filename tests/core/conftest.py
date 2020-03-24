@@ -143,7 +143,7 @@ def default_channel() -> OutputChannel:
 async def default_processor(default_agent: Agent) -> MessageProcessor:
     tracker_store = InMemoryTrackerStore(default_agent.domain)
     return MessageProcessor(
-        default_agent.interpreters,
+        default_agent.interpreter,
         default_agent.policy_ensemble,
         default_agent.domain,
         tracker_store,

@@ -233,19 +233,18 @@ async def load_agent_on_start(
     try:
         with model.get_model(model_path) as unpacked_model:
             _, nlu_models = model.get_model_subdirectories(unpacked_model)
-            _interpreters = {}
+            _interpreter = {}
             from rasa.nlu.model import UnsupportedModelError
             from rasa.core.interpreter import RegexInterpreter
             for lang, nlu_model in nlu_models.items():
                 try:
-                    _interpreters[lang] = NaturalLanguageInterpreter.create(endpoints.nlu or nlu_model)
+                    _interpreter[lang] = NaturalLanguageInterpreter.create(endpoints.nlu or nlu_model)
                 except UnsupportedModelError as e:
-                    if not len(_interpreters): logger.warning(e.message)
-                    _interpreters[lang] = RegexInterpreter()
+                    if not len(_interpreter): logger.warning(e.message)
+                    _interpreter[lang] = RegexInterpreter()
     except Exception:
         logger.debug(f"Could not load interpreter from '{model_path}'.")
-        _interpreters = {}
-        model_path = None
+        _interpreter = {}
     # /bf mod
 
     _broker = EventBroker.create(endpoints.event_broker)
@@ -258,7 +257,7 @@ async def load_agent_on_start(
         model_path,
         model_server=model_server,
         remote_storage=remote_storage,
-        interpreters=_interpreters,
+        interpreter=_interpreter,
         generator=endpoints.nlg,
         tracker_store=_tracker_store,
         lock_store=_lock_store,
@@ -271,7 +270,7 @@ async def load_agent_on_start(
             "Load default agent without any model."
         )
         app.agent = Agent(
-            interpreters=_interpreters,
+            interpreter=_interpreter,
             generator=endpoints.nlg,
             tracker_store=_tracker_store,
             action_endpoint=endpoints.action,
