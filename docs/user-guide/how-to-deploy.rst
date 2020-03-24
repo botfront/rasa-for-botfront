@@ -7,7 +7,7 @@ Deploying your Rasa Assistant
 
 .. edit-link::
 
-This page explains when and how to deploy an assistant built with Rasa. 
+This page explains when and how to deploy an assistant built with Rasa.
 It will allow you to make your assistant available to users and set you up with a production-ready environment.
 
 .. contents::
@@ -22,7 +22,7 @@ When to deploy your assistant
 
     The best time to deploy your assistant and make it available to test users is once it can handle the most important happy paths or is what we call a <a style="text-decoration: none" href="https://rasa.com/docs/rasa/glossary">minimum viable assistant</a>.
 
-The recommended deployment methods described below make it easy to share your assistant with test users via the `share your assistant feature in Rasa X <../../rasa-x/docs/user-guide/enable-workflows#conversations-with-test-users>`_. Then, when you’re ready to make your assistant available via one or more :ref:`messaging-and-voice-channels`, you can easily add them to your existing deployment set up.
+The recommended deployment methods described below make it easy to share your assistant with test users via the `share your assistant feature in Rasa X <https://rasa.com/docs/rasa-x/user-guide/enable-workflows#conversations-with-test-users>`_. Then, when you’re ready to make your assistant available via one or more :ref:`messaging-and-voice-channels`, you can easily add them to your existing deployment set up.
 
 .. _recommended-deployment-methods:
 
@@ -36,14 +36,14 @@ Kubernetes/Openshift
 
 Kubernetes/Openshift is the best option if you need a scalable architecture. It's straightforward to deploy if you use the helm charts we provide. However, you can also customize the Helm charts if you have specific requirements.
 
-    - Default: Read the docs `here <../../rasa-x/docs/installation-and-setup/openshift-kubernetes/>`__.
-    - Custom: Read the docs `here <../../rasa-x/docs/installation-and-setup/openshift-kubernetes/>`__ and customize the `open source Helm charts <https://github.com/RasaHQ/rasa-x-helm>`_.
+    - Default: Read the docs `here <https://rasa.com/docs/rasa-x/installation-and-setup/openshift-kubernetes/>`__.
+    - Custom: Read the docs `here <https://rasa.com/docs/rasa-x/installation-and-setup/openshift-kubernetes/>`__ and customize the `open source Helm charts <https://github.com/RasaHQ/rasa-x-helm>`_.
 
 Docker Compose
 ~~~~~~~~~~~~~~
 
-    - Default: Watching this `video <https://www.youtube.com/watch?v=IUYdwy8HPVc>`__ or read the docs `here <../../rasa-x/docs/installation-and-setup/docker-compose-script/>`__.
-    - Custom: Read the docs `here <../../rasa-x/docs/installation-and-setup/docker-compose-manual/>`__.
+    - Default: Watching this `video <https://www.youtube.com/watch?v=IUYdwy8HPVc>`__ or read the docs `here <https://rasa.com/docs/rasa-x/installation-and-setup/docker-compose-script/>`__.
+    - Custom: Read the docs `here <https://rasa.com/docs/rasa-x/installation-and-setup/docker-compose-manual/>`__.
 
 
 .. _rasa-only-deployment:
@@ -55,7 +55,7 @@ It is also possible to deploy a Rasa assistant using Docker Compose without Rasa
 
 .. contents::
    :local:
-   
+
 
 Installing Docker
 ~~~~~~~~~~~~~~~~~
@@ -332,7 +332,7 @@ Then build a custom action using the Rasa SDK, e.g.:
     def name(self):
       return "action_joke"
 
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
       request = requests.get('http://api.icndb.com/jokes/random').json()  # make an api call
       joke = request['value']['joke']  # extract a joke from returned json response
       dispatcher.utter_message(text=joke)  # send the message back to the user
@@ -382,6 +382,8 @@ Add this to your ``endpoints.yml`` (if it does not exist, create it):
 Run ``docker-compose up`` to start the action server together
 with Rasa.
 
+.. _deploying-your-rasa-assistant_custom-dependencies:
+
 Adding Custom Dependencies
 **************************
 
@@ -396,12 +398,19 @@ image and add your custom dependencies. For example:
     # Extend the official Rasa SDK image
     FROM rasa/rasa-sdk:latest
 
+    # The Rasa SDK image runs as non-root user by default. Hence, you have to switch
+    # back to the `root` user if you want to install additional dependencies.
+    USER root
+
     # Add a custom system library (e.g. git)
     RUN apt-get update && \
         apt-get install -y git
 
     # Add a custom python library (e.g. jupyter)
     RUN pip install --no-cache-dir jupyter
+
+   # Switch back to a non-root user
+   USER 1001
 
 You can then build the image via the following command, and use it in your
 ``docker-compose.yml`` instead of the ``rasa/rasa-sdk`` image.

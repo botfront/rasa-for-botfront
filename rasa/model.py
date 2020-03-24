@@ -288,32 +288,30 @@ async def model_fingerprint(file_importer: "TrainingDataImporter") -> Fingerprin
     import time
 
     # bf mod
-    # config = await file_importer.get_config()
+    config = await file_importer.get_config()
     domain = await file_importer.get_domain()
-    # stories = await file_importer.get_stories()
-    stories_hash = await file_importer.get_stories_hash()
+    stories = await file_importer.get_stories()
     nlu_data = await file_importer.get_nlu_data()
 
     nlu_config = await file_importer.get_nlu_config()
-    core_config = await file_importer.get_core_config()
     domain_dict = domain.as_dict()
     templates = domain_dict.pop("responses")
     domain_without_nlg = Domain.from_dict(domain_dict)
 
     return {
         FINGERPRINT_CONFIG_KEY: _get_hash_of_config(
-            core_config, exclude_keys=CONFIG_MANDATORY_KEYS
+            config, exclude_keys=CONFIG_MANDATORY_KEYS
         ),
         FINGERPRINT_CONFIG_CORE_KEY: _get_hash_of_config(
-            core_config, include_keys=CONFIG_MANDATORY_KEYS_CORE
+            config, include_keys=CONFIG_MANDATORY_KEYS_CORE
         ),
         FINGERPRINT_CONFIG_NLU_KEY: {lang: _get_hash_of_config(config, include_keys=CONFIG_MANDATORY_KEYS_NLU)
-                                     for (lang, config) in nlu_config.items()},
+                                        for (lang, config) in nlu_config.items()} if len(nlu_config) else '',
         FINGERPRINT_DOMAIN_WITHOUT_NLG_KEY: hash(domain_without_nlg),
         FINGERPRINT_NLG_KEY: get_dict_hash(templates),
         FINGERPRINT_NLU_DATA_KEY: {lang: hash(nlu_data[lang])
-                                   for lang in nlu_data},
-        FINGERPRINT_STORIES_KEY: stories_hash,
+                                    for lang in nlu_data},
+        FINGERPRINT_STORIES_KEY: hash(stories),
         FINGERPRINT_TRAINED_AT_KEY: time.time(),
         FINGERPRINT_RASA_VERSION_KEY: rasa.__version__,
     }

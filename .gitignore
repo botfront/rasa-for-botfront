@@ -81,6 +81,11 @@ errors.json
 #_project
 pip-wheel-metadata/*
 events.db
+events.db-shm
+events.db-wal
+rasa.db
+rasa.db-shm
+rasa.db-wal
 *.swp
 *.coverage*
 env

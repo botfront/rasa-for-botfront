@@ -364,7 +364,7 @@ async def _train_core_with_validated_data(
         print_color("Training Core model...", color=bcolors.OKBLUE)
         # bf mod
         domain, config = await asyncio.gather(
-            file_importer.get_domain(), file_importer.get_core_config() #.get_config()
+            file_importer.get_domain(), file_importer.get_config()
         )
         # /bf mod
         await rasa.core.train(
@@ -491,7 +491,7 @@ async def _train_nlu_with_validated_data(
                 print_color("Start training {} NLU model ...".format(lang), color=bcolors.OKBLUE)
                 _, models[lang], _ = await rasa.nlu.train(
                     config[lang],
-                    file_importer, # config[lang]['path'],
+                    file_importer,
                     _train_path,
                     fixed_model_name="nlu-{}".format(lang),
                     persist_nlu_training_data=persist_nlu_training_data,

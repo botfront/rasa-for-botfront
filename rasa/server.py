@@ -1,7 +1,6 @@
 import asyncio
 import functools
 import logging
-import warnings
 import multiprocessing
 import os
 import tempfile
@@ -84,7 +83,6 @@ def _docs(sub_url: Text) -> Text:
 
 def ensure_loaded_agent(app: Sanic, require_core_is_ready=False):
     """Wraps a request handler ensuring there is a loaded and usable agent.
-
     Require the agent to have a loaded Core model if `require_core_is_ready` is
     `True`.
     """
@@ -103,7 +101,7 @@ def ensure_loaded_agent(app: Sanic, require_core_is_ready=False):
                     "Conflict",
                     "No agent loaded. To continue processing, a "
                     "model of a trained agent needs to be loaded.",
-                    help_url=_docs("/user-guide/running-the-server/"),
+                    help_url=_docs("/user-guide/configuring-http-api/"),
                 )
 
             return f(*args, **kwargs)
@@ -169,7 +167,7 @@ def requires_auth(app: Sanic, token: Optional[Text] = None) -> Callable[[Any], A
                     "NotAuthorized",
                     "User has insufficient permissions.",
                     help_url=_docs(
-                        "/user-guide/running-the-server/#security-considerations"
+                        "/user-guide/configuring-http-api/#security-considerations"
                     ),
                 )
             elif token is None and app.config.get("USE_JWT") is None:
@@ -183,7 +181,7 @@ def requires_auth(app: Sanic, token: Optional[Text] = None) -> Callable[[Any], A
                 "NotAuthenticated",
                 "User is not authenticated.",
                 help_url=_docs(
-                    "/user-guide/running-the-server/#security-considerations"
+                    "/user-guide/configuring-http-api/#security-considerations"
                 ),
             )
 
@@ -245,16 +243,13 @@ def create_ssl_context(
     ssl_password: Optional[Text] = None,
 ) -> Optional["SSLContext"]:
     """Create an SSL context if a proper certificate is passed.
-
     Args:
         ssl_certificate: path to the SSL client certificate
         ssl_keyfile: path to the SSL key file
         ssl_ca_file: path to the SSL CA file for verification (optional)
         ssl_password: SSL private key password (optional)
-
     Returns:
         SSL context if a valid certificate chain can be loaded, `None` otherwise.
-
     """
 
     if ssl_certificate:
@@ -366,7 +361,7 @@ def add_root_route(app: Sanic):
     @app.get("/")
     async def hello(request: Request):
         """Check if the server is running and responds with the version."""
-        return response.text("Hello from Rasa: " + rasa.__version_bf__)
+        return response.text("Hello from Rasa: " + rasa.__version_bf__) # bf mod
 
 
 def create_app(
@@ -414,7 +409,7 @@ def create_app(
 
         return response.json(
             {
-                "version": rasa.__version_bf__,
+                "version": rasa.__version_bf__, # bf mod
                 "minimum_compatible_version": MINIMUM_COMPATIBLE_VERSION,
             }
         )
@@ -755,25 +750,19 @@ def create_app(
         # training data
         temp_dir = tempfile.mkdtemp()
 
-        # bf mod
-        config_paths = {}
-
-        config_dir = os.path.join(temp_dir, 'config')
-        os.mkdir(config_dir)
-
+        config_paths = []
         for key in rjs["config"].keys():
-            config_path = os.path.join(config_dir, "{}.yml".format(key))
+            config_path = os.path.join(temp_dir, "config-{}.yml".format(key))
             rasa.utils.io.write_text_file(rjs["config"][key], config_path)
-            config_paths[key] = config_path
+            config_paths += [config_path]
 
         if "nlu" in rjs:
-            nlu_dir = os.path.join(temp_dir, 'nlu')
+            nlu_dir = os.path.join(temp_dir, "nlu")
             os.mkdir(nlu_dir)
 
             for key in rjs["nlu"].keys():
                 nlu_path = os.path.join(nlu_dir, "{}.md".format(key))
                 rasa.utils.io.write_text_file(rjs["nlu"][key]["data"], nlu_path)
-        # /bf mod
 
         if "stories" in rjs:
             stories_path = os.path.join(temp_dir, "stories.md")
@@ -799,10 +788,8 @@ def create_app(
                 training_files=temp_dir,
                 output=model_output_directory,
                 force_training=rjs.get("force", False),
-                # botfront: add the possibility to pass a fixed name in the json payload
-                fixed_model_name=rjs.get("fixed_model_name", None),
-                # persist data file for nlu components to use
-                persist_nlu_training_data=True,
+                fixed_model_name=rjs.get("fixed_model_name"), # bf
+                persist_nlu_training_data=True, # bf
             )
 
             loop = asyncio.get_event_loop()
@@ -918,15 +905,14 @@ def create_app(
             raise ErrorResponse(409, "Conflict", "Loaded model file not found.")
 
         model_directory = eval_agent.model_directory
-        # bf mod
-        model_directory = os.path.abspath(os.path.join(model_directory, os.pardir))
-        # /bf mod
-        _, nlu_models = model.get_model_subdirectories(model_directory)
+        model_directory = os.path.abspath(os.path.join(model_directory, os.pardir)) # bf mod
+        _, nlu_model = model.get_model_subdirectories(model_directory)
 
         try:
+            # evaluation = run_evaluation(data_path, nlu_model)
             # bf mod
             language = request.args.get("language", None)
-            evaluation = run_evaluation(data_path, nlu_models.get(language))
+            evaluation = run_evaluation(data_path, nlu_model.get(language))
             # /bf mod
             return response.json(evaluation)
         except Exception as e:
@@ -1001,7 +987,6 @@ def create_app(
             raise ErrorResponse(
                 400, "Bad Request", "'lang' property is required'"
             )
-
         emulation_mode = request.args.get("emulation_mode")
         emulator = _create_emulator(emulation_mode)
 
@@ -1123,12 +1108,12 @@ def create_app(
 
         nlu_data_path = os.path.join(temp_dir, "nlu_data")
         output_path = os.path.join(out_dir, "output")
-        # botfront: several nlu files
+
         if type(rjs["data"]) is dict:
             rasa.utils.io.dump_obj_as_json_to_file(nlu_data_path, rjs["data"])
         else:
             rasa.utils.io.write_text_file(rjs["data"], nlu_data_path)
-        # botfront end
+
         from rasa.nlu.convert import convert_training_data
         convert_training_data(nlu_data_path, output_path, rjs["output_format"], rjs["language"])
 
@@ -1148,12 +1133,10 @@ def _get_output_channel(
     request: Request, tracker: Optional[DialogueStateTracker]
 ) -> OutputChannel:
     """Returns the `OutputChannel` which should be used for the bot's responses.
-
     Args:
         request: HTTP request whose query parameters can specify which `OutputChannel`
                  should be used.
         tracker: Tracker for the conversation. Used to get the latest input channel.
-
     Returns:
         `OutputChannel` which should be used to return the bot's responses to.
     """

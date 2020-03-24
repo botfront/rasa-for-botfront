@@ -48,26 +48,27 @@ from rasa.model import (
 from rasa.exceptions import ModelNotFound
 
 
-def test_get_latest_model(trained_model):
+def test_get_latest_model(trained_rasa_model: str):
     import shutil
 
-    path_of_latest = os.path.join(os.path.dirname(trained_model), "latest.tar.gz")
-    shutil.copy(trained_model, path_of_latest)
+    path_of_latest = os.path.join(os.path.dirname(trained_rasa_model), "latest.tar.gz")
+    shutil.copy(trained_rasa_model, path_of_latest)
 
     model_directory = os.path.dirname(path_of_latest)
 
     assert get_latest_model(model_directory) == path_of_latest
 
 
-def test_get_model_from_directory(trained_model):
-    unpacked = get_model(trained_model)
+def test_get_model_from_directory(trained_rasa_model: str):
+    unpacked = get_model(trained_rasa_model)
+
     assert os.path.exists(os.path.join(unpacked, DEFAULT_CORE_SUBDIRECTORY_NAME))
     assert os.path.exists(os.path.join(unpacked, "nlu-en"))
     assert os.path.exists(os.path.join(unpacked, "nlu-fr"))
 
 
-def test_get_model_context_manager(trained_model):
-    with get_model(trained_model) as unpacked:
+def test_get_model_context_manager(trained_rasa_model: str):
+    with get_model(trained_rasa_model) as unpacked:
         assert os.path.exists(unpacked)
 
     assert not os.path.exists(unpacked)
@@ -80,9 +81,9 @@ def test_get_model_exception(model_path):
 
 
 def test_get_model_from_directory_with_subdirectories(
-    trained_model, tmpdir_factory: TempdirFactory
+    trained_rasa_model, tmpdir_factory: TempdirFactory
 ):
-    unpacked = get_model(trained_model)
+    unpacked = get_model(trained_rasa_model)
     unpacked_core, unpacked_nlu = get_model_subdirectories(unpacked)
 
     assert unpacked_core
@@ -93,8 +94,8 @@ def test_get_model_from_directory_with_subdirectories(
         get_model_subdirectories(directory)
 
 
-def test_get_model_from_directory_nlu_only(trained_model):
-    unpacked = get_model(trained_model)
+def test_get_model_from_directory_nlu_only(trained_rasa_model):
+    unpacked = get_model(trained_rasa_model)
     shutil.rmtree(os.path.join(unpacked, DEFAULT_CORE_SUBDIRECTORY_NAME))
     unpacked_core, unpacked_nlu = get_model_subdirectories(unpacked)
 
@@ -288,7 +289,8 @@ def _project_files(
     paths = {k: v if v is None else os.path.join(project, v) for k, v in paths.items()}
     paths["training_data_paths"] = [paths["training_data_paths"]]
 
-    return RasaFileImporter(**paths)
+    from rasa_addons.importers import BotfrontFileImporter # bf
+    return BotfrontFileImporter(**paths) # bf
 
 
 async def test_create_fingerprint_from_paths(project):
@@ -312,7 +314,7 @@ async def test_create_fingerprint_from_invalid_paths(project, project_files):
         domain=hash(Domain.empty()),
         nlg=get_dict_hash(Domain.empty().templates),
         stories=hash(StoryGraph([])),
-        nlu=hash(TrainingData()),
+        nlu={}, # bf
         rasa_version=rasa.__version__,
     )
 
@@ -326,8 +328,8 @@ async def test_create_fingerprint_from_invalid_paths(project, project_files):
 
 
 @pytest.mark.parametrize("use_fingerprint", [True, False])
-async def test_rasa_packaging(trained_model, project, use_fingerprint):
-    unpacked_model_path = get_model(trained_model)
+async def test_rasa_packaging(trained_rasa_model, project, use_fingerprint):
+    unpacked_model_path = get_model(trained_rasa_model)
 
     os.remove(os.path.join(unpacked_model_path, FINGERPRINT_FILE_PATH))
     if use_fingerprint:
@@ -346,7 +348,8 @@ async def test_rasa_packaging(trained_model, project, use_fingerprint):
         os.path.exists(os.path.join(unpacked, FINGERPRINT_FILE_PATH)) == use_fingerprint
     )
     assert os.path.exists(os.path.join(unpacked, DEFAULT_CORE_SUBDIRECTORY_NAME))
-    assert os.path.exists(os.path.join(unpacked, "nlu"))
+    assert os.path.exists(os.path.join(unpacked, "nlu-en")) # bf
+    assert os.path.exists(os.path.join(unpacked, "nlu-fr")) # bf
 
     assert not os.path.exists(unpacked_model_path)
 
@@ -462,8 +465,8 @@ async def test_rasa_packaging(trained_model, project, use_fingerprint):
         },
     ],
 )
-def test_should_retrain(trained_model: Text, fingerprint: Fingerprint):
-    old_model = set_fingerprint(trained_model, fingerprint["old"])
+def test_should_retrain(trained_rasa_model: Text, fingerprint: Fingerprint):
+    old_model = set_fingerprint(trained_rasa_model, fingerprint["old"])
 
     retrain = should_retrain(fingerprint["new"], old_model, tempfile.mkdtemp())
 
@@ -472,8 +475,8 @@ def test_should_retrain(trained_model: Text, fingerprint: Fingerprint):
     assert set(retrain.should_retrain_nlu()) == set(fingerprint["retrain_nlu"])
 
 
-def set_fingerprint(trained_model: Text, fingerprint: Fingerprint) -> Text:
-    unpacked_model_path = get_model(trained_model)
+def set_fingerprint(trained_rasa_model: Text, fingerprint: Fingerprint) -> Text:
+    unpacked_model_path = get_model(trained_rasa_model)
 
     os.remove(os.path.join(unpacked_model_path, FINGERPRINT_FILE_PATH))
 
@@ -525,8 +528,8 @@ def test_fingerprint_comparison_result(
     assert comparison_result.should_retrain_nlu() == retrain_nlu
 
 
-async def test_update_with_new_domain(trained_model: Text, tmpdir: Path):
-    _ = model.unpack_model(trained_model, tmpdir)
+async def test_update_with_new_domain(trained_rasa_model: Text, tmpdir: Path):
+    _ = model.unpack_model(trained_rasa_model, tmpdir)
 
     new_domain = Domain.empty()
 
