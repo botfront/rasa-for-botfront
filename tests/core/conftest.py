@@ -23,7 +23,6 @@ from rasa.core.tracker_store import InMemoryTrackerStore, MongoTrackerStore
 from rasa.core.trackers import DialogueStateTracker
 
 
-
 DEFAULT_DOMAIN_PATH_WITH_SLOTS = "data/test_domains/default_with_slots.yml"
 
 DEFAULT_DOMAIN_PATH_WITH_SLOTS_AND_NO_ACTIONS = (
@@ -38,8 +37,8 @@ DEFAULT_STACK_CONFIG = "data/test_config/stack_config.yml"
 
 DEFAULT_NLU_DATA = "examples/moodbot/data/nlu.md"
 
-DEFAULT_BF_CONFIG_DATA = ["data/test_config/bf-config/config-en.yml", "data/test_config/bf-config/config-fr.yml"] # bf
-DEFAULT_BF_NLU_DATA = "examples/moodbot/data/bf-nlu" # bf
+DEFAULT_BF_CONFIG_DATA = ["data/botfront/config-en.yml", "data/botfront/config-fr.yml"] # bf
+DEFAULT_BF_NLU_DATA = "data/botfront/nlu" # bf
 
 END_TO_END_STORY_FILE = "data/test_evaluations/end_to_end_story.md"
 

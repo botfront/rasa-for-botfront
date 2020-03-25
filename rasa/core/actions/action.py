@@ -77,9 +77,7 @@ def default_actions() -> List["Action"]:
 
 def default_action_names() -> List[Text]:
     """List default action names."""
-    # < bf mod
-    return [a.name() for a in default_actions()] + list(actions_bf.keys())
-    # </ bf mod
+    return [a.name() for a in default_actions()] + list(actions_bf.keys()) # bf
 
 
 def combine_user_with_default_actions(user_actions: List[Text]) -> List[Text]:
@@ -115,9 +113,7 @@ def action_from_name(
         return ActionUtterTemplate(name)
     elif name.startswith(RESPOND_PREFIX):
         return ActionRetrieveResponse(name)
-    # < bf mod
-    elif name in actions_bf: return actions_bf[name]
-    # </ bf mod
+    elif name in actions_bf: return actions_bf[name] # bf
     else:
         return RemoteAction(name, action_endpoint)
 
@@ -174,6 +170,7 @@ class Action:
     ) -> List[Event]:
         """
         Execute the side effects of this action.
+
         Args:
             nlg: which ``nlg`` to use for response generation
             output_channel: ``output_channel`` to which to send the resulting message.
@@ -182,6 +179,7 @@ class Action:
                 ``tracker.get_slot(slot_name)`` and the most recent user
                 message is ``tracker.latest_message.text``.
             domain (Domain): the bot's domain
+
         Returns:
             List[Event]: A list of :class:`rasa.core.events.Event` instances
         """
@@ -244,6 +242,7 @@ class ActionRetrieveResponse(Action):
 
 class ActionUtterTemplate(Action):
     """An action which only effect is to utter a template when it is run.
+
     Both, name and utter template, need to be specified using
     the `name` method."""
 
@@ -302,6 +301,7 @@ class ActionBack(ActionUtterTemplate):
 
 class ActionListen(Action):
     """The first action in any turn - bot waits for a user message.
+
     The bot should stop taking further actions and wait for the user to say
     something."""
 
@@ -320,6 +320,7 @@ class ActionListen(Action):
 
 class ActionRestart(ActionUtterTemplate):
     """Resets the tracker to its initial state.
+
     Utters the restart template if available."""
 
     def name(self) -> Text:
@@ -454,6 +455,7 @@ class RemoteAction(Action):
     @staticmethod
     def action_response_format_spec() -> Dict[Text, Any]:
         """Expected response schema for an Action endpoint.
+
         Used for validation of the response returned from the
         Action endpoint."""
         return {
@@ -613,6 +615,7 @@ class ActionExecutionRejection(Exception):
 
 class ActionRevertFallbackEvents(Action):
     """Reverts events which were done during the `TwoStageFallbackPolicy`.
+
        This reverts user messages and bot utterances done during a fallback
        of the `TwoStageFallbackPolicy`. By doing so it is not necessary to
        write custom stories for the different paths, but only of the happy
@@ -692,6 +695,7 @@ def _revert_rephrasing_events() -> List[Event]:
 
 class ActionDefaultAskAffirmation(Action):
     """Default implementation which asks the user to affirm his intent.
+
        It is suggested to overwrite this default action with a custom action
        to have more meaningful prompts for the affirmations. E.g. have a
        description of the intent instead of its identifier name.
@@ -727,9 +731,7 @@ class ActionDefaultAskRephrase(ActionUtterTemplate):
     def name(self) -> Text:
         return ACTION_DEFAULT_ASK_REPHRASE_NAME
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__("utter_ask_rephrase", silent_fail=True)
 
-# bf mod
-from rasa_addons.core.actions import actions_bf
-# /bf mod
+from rasa_addons.core.actions import actions_bf # bf

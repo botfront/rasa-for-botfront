@@ -1,5 +1,4 @@
 import logging
-import warnings
 import os
 import re
 import scipy.sparse
@@ -539,16 +538,6 @@ class CountVectorsFeaturizer(SparseFeaturizer):
         )
 
     def _collect_vectorizer_vocabularies(self) -> Dict[Text, Optional[Dict[Text, int]]]:
-        """Get vocabulary for all attributes"""
-
-        attribute_vocabularies = {}
-        for attribute in self._attributes:
-            attribute_vocabularies[attribute] = self._get_attribute_vocabulary(
-                attribute
-            )
-        return attribute_vocabularies
-
-    def _collect_vectorizer_vocabularies(self):
         """Get vocabulary for all attributes"""
 
         attribute_vocabularies = {}

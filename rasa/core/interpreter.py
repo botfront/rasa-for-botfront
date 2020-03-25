@@ -23,7 +23,6 @@ class NaturalLanguageInterpreter:
         text: Text,
         message_id: Optional[Text] = None,
         tracker: DialogueStateTracker = None,
-        params: Optional[Dict] = None,
     ) -> Dict[Text, Any]:
         raise NotImplementedError(
             "Interpreter needs to be able to parse messages into structured output."
@@ -204,7 +203,6 @@ class RasaNLUHttpInterpreter(NaturalLanguageInterpreter):
         text: Text,
         message_id: Optional[Text] = None,
         tracker: DialogueStateTracker = None,
-        params: Optional[Dict] = None,
     ) -> Dict[Text, Any]:
         """Parse a text message.
 
@@ -282,7 +280,6 @@ class RasaNLUInterpreter(NaturalLanguageInterpreter):
         text: Text,
         message_id: Optional[Text] = None,
         tracker: DialogueStateTracker = None,
-        params: Optional[Dict] = None,
     ) -> Dict[Text, Any]:
         """Parse a text message.
 

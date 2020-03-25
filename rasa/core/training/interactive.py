@@ -11,6 +11,7 @@ from typing import Any, Callable, Dict, List, Optional, Text, Tuple, Union, Set
 import numpy as np
 from aiohttp import ClientError
 from colorclass import Color
+
 from rasa.nlu.training_data.loading import MARKDOWN, RASA
 from sanic import Sanic, response
 from sanic.exceptions import NotFound

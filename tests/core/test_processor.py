@@ -36,9 +36,6 @@ from tests.utilities import latest_request
 
 from rasa.core.constants import EXTERNAL_MESSAGE_PREFIX, IS_EXTERNAL
 
-from tests.core.conftest import DEFAULT_DOMAIN_PATH_WITH_SLOTS
-from rasa.core.domain import Domain
-
 import logging
 
 logger = logging.getLogger(__name__)

@@ -53,7 +53,7 @@ CVEvaluationResult = namedtuple("Results", "train test")
 NO_ENTITY = "no_entity"
 
 IntentEvaluationResult = namedtuple(
-    "IntentEvaluationResult", "intent_target intent_prediction message confidence entities_target entities_prediction"
+    "IntentEvaluationResult", "intent_target intent_prediction message confidence"
 )
 
 ResponseSelectionEvaluationResult = namedtuple(
@@ -525,8 +525,6 @@ def evaluate_intents(
             "text": res.message,
             "intent": res.intent_target,
             "predicted": res.intent_prediction,
-            "entities": res.entities_target,
-            "predicted_entities": res.entities_prediction,
             "confidence": res.confidence,
         }
         for res in intent_results
@@ -960,8 +958,6 @@ def get_eval_data(
                     intent_prediction.get("name"),
                     result.get("text", {}),
                     intent_prediction.get("confidence"),
-                    example.get("entities"),
-                    result.get("entities", [])
                 )
             )
 

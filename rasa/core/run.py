@@ -1,5 +1,4 @@
 import asyncio
-import warnings
 import logging
 import uuid
 import os

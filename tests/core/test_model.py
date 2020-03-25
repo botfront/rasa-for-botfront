@@ -3,7 +3,7 @@ import tempfile
 import time
 import shutil
 from pathlib import Path
-from typing import Text, Optional, Dict, Any
+from typing import Text, Optional, Any
 from unittest.mock import Mock
 
 import pytest

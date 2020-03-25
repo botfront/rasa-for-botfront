@@ -317,7 +317,6 @@ async def train_core_async(
     file_importer = TrainingDataImporter.load_core_importer_from_config(
         config, domain, [stories]
     )
-
     domain = await file_importer.get_domain()
     if domain.is_empty():
         print_error(
@@ -341,6 +340,7 @@ async def train_core_async(
         additional_arguments=additional_arguments,
     )
 
+
 async def _train_core_with_validated_data(
     file_importer: TrainingDataImporter,
     output: Text,
@@ -362,11 +362,9 @@ async def _train_core_with_validated_data(
 
         # normal (not compare) training
         print_color("Training Core model...", color=bcolors.OKBLUE)
-        # bf mod
         domain, config = await asyncio.gather(
             file_importer.get_domain(), file_importer.get_config()
         )
-        # /bf mod
         await rasa.core.train(
             domain_file=domain,
             training_resource=file_importer,
@@ -444,7 +442,6 @@ async def _train_nlu_async(
     )
 
     training_datas = await file_importer.get_nlu_data()
-
     if training_datas.is_empty():
         print_error(
             "No NLU data given. Please provide NLU data in order to train "
@@ -472,7 +469,6 @@ async def _train_nlu_with_validated_data(
     """Train NLU with validated training and config data."""
 
     import rasa.nlu.train
-    import re
 
     with ExitStack() as stack:
         models = {}

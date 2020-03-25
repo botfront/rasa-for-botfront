@@ -1,5 +1,4 @@
 import logging
-import warnings
 import typing
 from collections import defaultdict
 from typing import Any, Dict, Text

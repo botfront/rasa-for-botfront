@@ -129,8 +129,7 @@ def create_initial_project(path: Text) -> None:
 
 def scaffold_path() -> Text:
     import pkg_resources
-    # bf: changed scaffold folder to bf project
-    return pkg_resources.resource_filename(__name__, "bf_initial_project")
+    return pkg_resources.resource_filename(__name__, "bf_initial_project") # bf
 
 
 def print_cancel() -> None:

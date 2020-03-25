@@ -5,7 +5,6 @@ Hence, it imports all of the components. To avoid cycles, no component should
 import this in module scope."""
 
 import logging
-import warnings
 import typing
 from typing import Any, Dict, List, Optional, Text, Type
 

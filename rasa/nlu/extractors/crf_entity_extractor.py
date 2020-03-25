@@ -362,6 +362,7 @@ class CRFEntityExtractor(EntityExtractor):
 
     def persist(self, file_name: Text, model_dir: Text) -> Optional[Dict[Text, Any]]:
         """Persist this model into the passed directory.
+
         Returns the metadata necessary to load the model again."""
 
         from sklearn.externals import joblib

@@ -9,7 +9,6 @@ from aioresponses import aioresponses
 
 import rasa.utils.io as io_utils
 from rasa.cli import x
-from rasa.core.utils import AvailableEndpoints
 from rasa.utils.endpoints import EndpointConfig
 from rasa.core.utils import AvailableEndpoints
 

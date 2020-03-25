@@ -83,6 +83,7 @@ def _docs(sub_url: Text) -> Text:
 
 def ensure_loaded_agent(app: Sanic, require_core_is_ready=False):
     """Wraps a request handler ensuring there is a loaded and usable agent.
+
     Require the agent to have a loaded Core model if `require_core_is_ready` is
     `True`.
     """
@@ -243,13 +244,16 @@ def create_ssl_context(
     ssl_password: Optional[Text] = None,
 ) -> Optional["SSLContext"]:
     """Create an SSL context if a proper certificate is passed.
+
     Args:
         ssl_certificate: path to the SSL client certificate
         ssl_keyfile: path to the SSL key file
         ssl_ca_file: path to the SSL CA file for verification (optional)
         ssl_password: SSL private key password (optional)
+
     Returns:
         SSL context if a valid certificate chain can be loaded, `None` otherwise.
+
     """
 
     if ssl_certificate:
@@ -361,7 +365,7 @@ def add_root_route(app: Sanic):
     @app.get("/")
     async def hello(request: Request):
         """Check if the server is running and responds with the version."""
-        return response.text("Hello from Rasa: " + rasa.__version_bf__) # bf mod
+        return response.text("Hello from Rasa: " + rasa.__version_bf__) # bf
 
 
 def create_app(
@@ -409,7 +413,7 @@ def create_app(
 
         return response.json(
             {
-                "version": rasa.__version_bf__, # bf mod
+                "version": rasa.__version_bf__, # bf
                 "minimum_compatible_version": MINIMUM_COMPATIBLE_VERSION,
             }
         )
@@ -750,6 +754,7 @@ def create_app(
         # training data
         temp_dir = tempfile.mkdtemp()
 
+        # bf >>
         config_paths = []
         for key in rjs["config"].keys():
             config_path = os.path.join(temp_dir, "config-{}.yml".format(key))
@@ -763,6 +768,8 @@ def create_app(
             for key in rjs["nlu"].keys():
                 nlu_path = os.path.join(nlu_dir, "{}.md".format(key))
                 rasa.utils.io.write_text_file(rjs["nlu"][key]["data"], nlu_path)
+        
+        # << bf
 
         if "stories" in rjs:
             stories_path = os.path.join(temp_dir, "stories.md")
@@ -784,7 +791,7 @@ def create_app(
 
             info = dict(
                 domain=domain_path,
-                config=config_paths,
+                config=config_paths, # bf
                 training_files=temp_dir,
                 output=model_output_directory,
                 force_training=rjs.get("force", False),
@@ -905,15 +912,12 @@ def create_app(
             raise ErrorResponse(409, "Conflict", "Loaded model file not found.")
 
         model_directory = eval_agent.model_directory
-        model_directory = os.path.abspath(os.path.join(model_directory, os.pardir)) # bf mod
+        model_directory = os.path.abspath(os.path.join(model_directory, os.pardir)) # bf
         _, nlu_model = model.get_model_subdirectories(model_directory)
 
         try:
-            # evaluation = run_evaluation(data_path, nlu_model)
-            # bf mod
-            language = request.args.get("language", None)
-            evaluation = run_evaluation(data_path, nlu_model.get(language))
-            # /bf mod
+            language = request.args.get("language", None) # bf
+            evaluation = run_evaluation(data_path, nlu_model.get(language)) #bf
             return response.json(evaluation)
         except Exception as e:
             logger.debug(traceback.format_exc())
@@ -1133,10 +1137,12 @@ def _get_output_channel(
     request: Request, tracker: Optional[DialogueStateTracker]
 ) -> OutputChannel:
     """Returns the `OutputChannel` which should be used for the bot's responses.
+
     Args:
         request: HTTP request whose query parameters can specify which `OutputChannel`
                  should be used.
         tracker: Tracker for the conversation. Used to get the latest input channel.
+
     Returns:
         `OutputChannel` which should be used to return the bot's responses to.
     """

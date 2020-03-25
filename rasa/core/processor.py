@@ -25,8 +25,6 @@ from rasa.core.constants import (
     USER_INTENT_RESTART,
     USER_INTENT_SESSION_START,
     UTTER_PREFIX,
-    USER_INTENT_BACK,
-    USER_INTENT_OUT_OF_SCOPE,
 )
 from rasa.core.domain import Domain
 from rasa.core.events import (

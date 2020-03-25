@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 class TemplatedNaturalLanguageGenerator(NaturalLanguageGenerator):
     """Natural language generator that generates messages based on templates.
+
     The templates can use variables to customize the utterances based on the
     state of the dialogue."""
 
@@ -44,6 +45,7 @@ class TemplatedNaturalLanguageGenerator(NaturalLanguageGenerator):
         self, utter_action: Text, output_channel: Text
     ) -> Optional[Dict[Text, Any]]:
         """Select random template for the utter action from available ones.
+
         If channel-specific templates for the current output channel are given,
         only choose from channel-specific ones.
         """

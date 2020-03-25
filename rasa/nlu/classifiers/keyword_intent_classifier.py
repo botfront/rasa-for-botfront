@@ -117,6 +117,7 @@ class KeywordIntentClassifier(IntentClassifier):
                     f" intent '{intent}'."
                 )
                 return intent
+
         logger.debug("KeywordClassifier did not find any keywords in the message.")
         return None
 

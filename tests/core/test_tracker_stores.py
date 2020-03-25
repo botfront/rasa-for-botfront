@@ -1,7 +1,5 @@
 import logging
 import tempfile
-from typing import Tuple, Text
-from unittest.mock import Mock
 
 import pytest
 import uuid
@@ -36,7 +34,6 @@ from rasa.core.tracker_store import (
     DynamoTrackerStore,
     FailSafeTrackerStore,
 )
-import rasa.core.tracker_store
 from rasa.core.trackers import DialogueStateTracker
 from rasa.utils.endpoints import EndpointConfig, read_endpoint_config
 from tests.core.conftest import DEFAULT_ENDPOINTS_FILE, MockedMongoTrackerStore

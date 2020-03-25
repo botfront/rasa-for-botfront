@@ -1,8 +1,0 @@
-language: en
-
-pipeline: "pretrained_embeddings_spacy"
-
-policies:
-  - name: KerasPolicy
-  - name: MemoizationPolicy
-  - name: MappingPolicy

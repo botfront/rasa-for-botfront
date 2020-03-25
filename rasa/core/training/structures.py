@@ -437,6 +437,7 @@ class Story:
 
         io.write_text_file(self.as_story_string(flat, e2e), filename, append=True)
 
+
 class StoryGraph:
     """Graph of the story-steps pooled from all stories in the training data."""
 

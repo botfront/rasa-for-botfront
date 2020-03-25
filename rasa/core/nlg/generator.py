@@ -8,6 +8,7 @@ from rasa.core.trackers import DialogueStateTracker
 
 logger = logging.getLogger(__name__)
 
+
 class NaturalLanguageGenerator:
     """Generate bot utterances based on a dialogue state."""
 

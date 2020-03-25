@@ -128,7 +128,6 @@ async def _update_model_from_server(
     if not is_url(model_server.url):
         raise aiohttp.InvalidURL(model_server.url)
 
-
     model_directory_and_fingerprint = await _pull_model_and_fingerprint(
         model_server, agent.fingerprint
     )
@@ -345,7 +344,7 @@ class Agent:
         domain: Optional[Domain],
         policy_ensemble: Optional[PolicyEnsemble],
         fingerprint: Optional[Text],
-        interpreter: Optional[Dict[str, NaturalLanguageInterpreter]] = None,
+        interpreter: Optional[Dict[Text, NaturalLanguageInterpreter]] = None,
         model_directory: Optional[Text] = None,
     ) -> None:
         self.domain = self._create_domain(domain)
