@@ -83,13 +83,8 @@ def _load_and_set_updated_model(
     interpreter = {}
     # If NLU models exist then create interpreter from them
     if len(nlu_paths):
-        from rasa.nlu.model import UnsupportedModelError
         for lang, nlu_path in nlu_paths.items():
-            try:
-                interpreter[lang] = NaturalLanguageInterpreter.create(os.path.join(model_directory, nlu_path))
-            except UnsupportedModelError as e:
-                if not len(interpreter): logger.warning(e.message)
-                interpreter[lang] = RegexInterpreter()
+            interpreter[lang] = NaturalLanguageInterpreter.create(os.path.join(model_directory, nlu_path))
     # If no NLU models exist, then associate a RegexInterpreter to the language code found in the fingerprints,
     # that should correspond to the default language in Botfront. This is to make sure an interpreter is available
     # when training stories without NLU
@@ -414,7 +409,11 @@ class Agent:
             ensemble = PolicyEnsemble.load(core_model) if core_model else None
 
             # ensures the domain hasn't changed between test and train
-            domain.compare_with_specification(core_model)
+            try:
+                domain.compare_with_specification(core_model)
+            except rasa.core.domain.InvalidDomain as e:
+                logger.warning(e.message)
+                domain = None
 
         return cls(
             domain=domain,

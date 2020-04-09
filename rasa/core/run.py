@@ -238,14 +238,8 @@ async def load_agent_on_start(
         with model.get_model(model_path) as unpacked_model:
             _, nlu_models = model.get_model_subdirectories(unpacked_model)
             _interpreter = {}
-            from rasa.nlu.model import UnsupportedModelError
-            from rasa.core.interpreter import RegexInterpreter
             for lang, nlu_model in nlu_models.items():
-                try:
-                    _interpreter[lang] = NaturalLanguageInterpreter.create(endpoints.nlu or nlu_model)
-                except UnsupportedModelError as e:
-                    if not len(_interpreter): logger.warning(e.message)
-                    _interpreter[lang] = RegexInterpreter()
+                _interpreter[lang] = NaturalLanguageInterpreter.create(endpoints.nlu or nlu_model)
     except Exception:
         logger.debug(f"Could not load interpreter from '{model_path}'.")
         _interpreter = {}
