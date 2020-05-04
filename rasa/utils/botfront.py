@@ -15,8 +15,8 @@ logger = logging.getLogger(__name__)
 from rasa.core.constants import DEFAULT_REQUEST_TIMEOUT
 
 CONFIG_QUERY = """
-query($projectId: String!) {
-	getConfig(projectId: $projectId) {
+query($projectId: String!, $environment: String) {
+	getConfig(projectId: $projectId, environment:$environment) {
         credentials
         endpoints
     }
@@ -30,7 +30,7 @@ def auto_retry(function):
         resp = None
         while not resp:
             if tries != 1:
-                time.sleep(.5)
+                time.sleep(0.5)
             logger.debug(f"Trying to fetch config from server (retry #{str(tries)})")
             resp = await function()
             tries += 1
@@ -41,9 +41,11 @@ def auto_retry(function):
 
 async def get_config_via_graphql(bf_url, project_id):
     from sgqlc.endpoint.http import HTTPEndpoint
+
     logging.getLogger("sgqlc.endpoint.http").setLevel(logging.WARNING)
     import urllib.error
 
+    environment = os.environ.get("BOTFRONT_ENV", "development")
     api_key = os.environ.get("API_KEY")
     headers = [{"Authorization": api_key}] if api_key else []
     endpoint = HTTPEndpoint(bf_url, *headers)
@@ -51,9 +53,14 @@ async def get_config_via_graphql(bf_url, project_id):
     @auto_retry
     async def load():
         try:
-            response = endpoint(CONFIG_QUERY, {"projectId": project_id})
-            if "errors" in response and response["errors"]: raise urllib.error.URLError("Null response.")
-            return endpoint(CONFIG_QUERY, {"projectId": project_id})["data"]
+            response = endpoint(
+                CONFIG_QUERY, {"projectId": project_id, "environment": environment}
+            )
+            if "errors" in response and response["errors"]:
+                raise urllib.error.URLError("Null response.")
+            return endpoint(
+                CONFIG_QUERY, {"projectId": project_id, "environment": environment}
+            )["data"]
         except urllib.error.URLError:
             return None
 
