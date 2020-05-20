@@ -46,7 +46,7 @@ RUN python -m venv /opt/venv && \
   rm -rf dist *.egg-info
 
 # Install Rasa Addons
-RUN pip install -Iv rasa-addons==0.9.24
+RUN pip install -Iv rasa-addons==0.9.25
 
 # start a new build stage
 FROM base as runner
