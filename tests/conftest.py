@@ -1,5 +1,4 @@
 import asyncio
-import os
 import random
 import uuid
 
@@ -41,8 +40,9 @@ from tests.core.conftest import (
     DEFAULT_STORIES_FILE,
     END_TO_END_STORY_FILE,
     MOODBOT_MODEL_PATH,
+    INCORRECT_NLU_DATA,
 )
-from tests.utilities import update_number_of_epochs
+
 
 DEFAULT_CONFIG_PATH = "rasa/cli/default_config.yml"
 
@@ -88,15 +88,10 @@ async def default_agent(_trained_default_agent: Agent) -> Agent:
 
 
 @pytest.fixture(scope="session")
-async def trained_moodbot_path(tmpdir_factory: TempdirFactory) -> Text:
-    output = tmpdir_factory.mktemp("moodbot").strpath
-    tmp_config_file = os.path.join(output, "config.yml")
-
-    update_number_of_epochs("examples/moodbot/config.yml", tmp_config_file)
-
+async def trained_moodbot_path() -> Text:
     return await train_async(
         domain="examples/moodbot/domain.yml",
-        config=tmp_config_file,
+        config="examples/moodbot/config.yml",
         training_files="examples/moodbot/data/",
         output_path=MOODBOT_MODEL_PATH,
     )
@@ -142,6 +137,11 @@ def default_stack_config() -> Text:
 @pytest.fixture(scope="session")
 def default_nlu_data() -> Text:
     return DEFAULT_NLU_DATA
+
+
+@pytest.fixture(scope="session")
+def incorrect_nlu_data() -> Text:
+    return INCORRECT_NLU_DATA
 
 
 @pytest.fixture(scope="session")
