@@ -25,13 +25,15 @@ query($projectId: String!, $environment: String) {
 
 
 def auto_retry(function):
+    bf_url = os.environ.get("BF_URL", "server")
+
     async def auto_retried():
         tries = 1
         resp = None
         while not resp:
             if tries != 1:
                 time.sleep(0.5)
-            logger.debug(f"Trying to fetch config from server (retry #{str(tries)})")
+            logger.debug(f"Trying to fetch config from {bf_url} (retry #{str(tries)})")
             resp = await function()
             tries += 1
         return resp
@@ -56,12 +58,15 @@ async def get_config_via_graphql(bf_url, project_id):
             response = endpoint(
                 CONFIG_QUERY, {"projectId": project_id, "environment": environment}
             )
-            if "errors" in response and response["errors"]:
-                raise urllib.error.URLError("Null response.")
+            if response.get("errors"):
+                raise urllib.error.URLError(
+                    ", ".join([e.get("message") for e in response.get("errors")])
+                )
             return endpoint(
                 CONFIG_QUERY, {"projectId": project_id, "environment": environment}
             )["data"]
-        except urllib.error.URLError:
+        except urllib.error.URLError as e:
+            logger.debug(e.reason)
             return None
 
     data = await load()
