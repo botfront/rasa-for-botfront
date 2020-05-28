@@ -75,6 +75,7 @@ class ErrorResponse(Exception):
             "code": status,
         }
         self.status = status
+        logger.error(message) # bf
 
 
 def _docs(sub_url: Text) -> Text:
