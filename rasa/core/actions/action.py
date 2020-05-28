@@ -113,6 +113,8 @@ def action_from_name(
         return ActionUtterTemplate(name)
     elif name.startswith(RESPOND_PREFIX):
         return ActionRetrieveResponse(name)
+    elif name.endswith("_form") and name + "_bf" in user_actions: # bf
+        return generate_bf_form_action(name)
     elif name in actions_bf: return actions_bf[name] # bf
     else:
         return RemoteAction(name, action_endpoint)
@@ -734,4 +736,4 @@ class ActionDefaultAskRephrase(ActionUtterTemplate):
     def __init__(self) -> None:
         super().__init__("utter_ask_rephrase", silent_fail=True)
 
-from rasa_addons.core.actions import actions_bf # bf
+from rasa_addons.core.actions import actions_bf, generate_bf_form_action # bf
