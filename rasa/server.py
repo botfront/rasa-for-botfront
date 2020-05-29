@@ -807,6 +807,9 @@ def create_app(
                 force_training=rjs.get("force", False),
                 fixed_model_name=rjs.get("fixed_model_name"), # bf
                 persist_nlu_training_data=True, # bf
+                additional_arguments={
+                    "augmentation_factor": os.environ.get("AUGMENTATION_FACTOR", 50),
+                } # bf
             )
 
             loop = asyncio.get_event_loop()
