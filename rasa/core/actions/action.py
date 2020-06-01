@@ -736,4 +736,8 @@ class ActionDefaultAskRephrase(ActionUtterTemplate):
     def __init__(self) -> None:
         super().__init__("utter_ask_rephrase", silent_fail=True)
 
-from rasa_addons.core.actions import actions_bf, generate_bf_form_action # bf
+import sys # avoid circular imports when testing addons
+if not hasattr(sys, '_called_from_rasa_addons_test'):
+    from rasa_addons.core.actions import actions_bf, generate_bf_form_action # bf
+else:
+    actions_bf = {}
