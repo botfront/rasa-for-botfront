@@ -46,7 +46,7 @@ RUN python -m venv /opt/venv && \
   rm -rf dist *.egg-info
 
 # Install Rasa Addons
-RUN pip install -Iv git+https://github.com/botfront/rasa-addons.git@0.10-beta.2
+RUN pip install -Iv git+https://github.com/botfront/rasa-addons.git@0.10-beta.3
 
 # start a new build stage
 FROM base as runner
