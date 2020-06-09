@@ -511,7 +511,8 @@ class Domain:
                     self.slots.append(UnfeaturizedSlot(s))
 
     def action_for_name(
-        self, action_name: Text, action_endpoint: Optional[EndpointConfig]
+        self, action_name: Text, action_endpoint: Optional[EndpointConfig],
+        bf_form_slot = [] # bf
     ) -> Optional[Action]:
         """Look up which action corresponds to this action name."""
 
@@ -519,11 +520,12 @@ class Domain:
             self._raise_action_not_found_exception(action_name)
 
         return action.action_from_name(
-            action_name, action_endpoint, self.user_actions_and_forms
+            action_name, action_endpoint, self.user_actions_and_forms, bf_form_slot # bf
         )
 
     def action_for_index(
-        self, index: int, action_endpoint: Optional[EndpointConfig]
+        self, index: int, action_endpoint: Optional[EndpointConfig],
+        bf_form_slot = [] # bf
     ) -> Optional[Action]:
         """Integer index corresponding to an actions index in the action list.
 
@@ -536,7 +538,7 @@ class Domain:
                 "".format(index, self.num_actions)
             )
 
-        return self.action_for_name(self.action_names[index], action_endpoint)
+        return self.action_for_name(self.action_names[index], action_endpoint, bf_form_slot) # bf
 
     def actions(self, action_endpoint) -> List[Optional[Action]]:
         return [
