@@ -808,7 +808,7 @@ def create_app(
                 fixed_model_name=rjs.get("fixed_model_name"), # bf
                 persist_nlu_training_data=True, # bf
                 additional_arguments={
-                    "augmentation_factor": os.environ.get("AUGMENTATION_FACTOR", 50),
+                    "augmentation_factor": int(os.environ.get("AUGMENTATION_FACTOR", 50)),
                 } # bf
             )
 
