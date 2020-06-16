@@ -101,7 +101,8 @@ def combine_with_templates(
 
 
 def action_from_name(
-    name: Text, action_endpoint: Optional[EndpointConfig], user_actions: List[Text]
+    name: Text, action_endpoint: Optional[EndpointConfig], user_actions: List[Text],
+    bf_form_slot = [] # bf
 ) -> "Action":
     """Return an action instance for the name."""
 
@@ -113,6 +114,8 @@ def action_from_name(
         return ActionUtterTemplate(name)
     elif name.startswith(RESPOND_PREFIX):
         return ActionRetrieveResponse(name)
+    elif name.endswith("_form") and any(slot.get("name") == name for slot in bf_form_slot): # bf
+        return generate_bf_form_action(name)
     elif name in actions_bf: return actions_bf[name] # bf
     else:
         return RemoteAction(name, action_endpoint)
@@ -126,7 +129,7 @@ def actions_from_names(
     """Converts the names of actions into class instances."""
 
     return [
-        action_from_name(name, action_endpoint, user_actions) for name in action_names
+        action_from_name(name, action_endpoint, user_actions) for name in action_names # bf
     ]
 
 
@@ -734,4 +737,8 @@ class ActionDefaultAskRephrase(ActionUtterTemplate):
     def __init__(self) -> None:
         super().__init__("utter_ask_rephrase", silent_fail=True)
 
-from rasa_addons.core.actions import actions_bf # bf
+import sys # avoid circular imports when testing addons
+if not hasattr(sys, '_called_from_rasa_addons_test'):
+    from rasa_addons.core.actions import actions_bf, generate_bf_form_action # bf
+else:
+    actions_bf = {}
