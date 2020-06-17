@@ -37,8 +37,6 @@ DEFAULT_STACK_CONFIG = "data/test_config/stack_config.yml"
 
 DEFAULT_NLU_DATA = "examples/moodbot/data/nlu.md"
 
-DEFAULT_BF_CONFIG_DATA = ["data/botfront/config-en.yml", "data/botfront/config-fr.yml"] # bf
-DEFAULT_BF_NLU_DATA = "data/botfront/nlu" # bf
 INCORRECT_NLU_DATA = "data/test/markdown_single_sections/incorrect_nlu_format.md"
 
 END_TO_END_STORY_FILE = "data/test_evaluations/end_to_end_story.md"
@@ -129,12 +127,12 @@ def default_stories_file():
 
 @pytest.fixture(scope="session")
 def default_stack_config():
-    return DEFAULT_BF_CONFIG_DATA # DEFAULT_STACK_CONFIG
+    return DEFAULT_STACK_CONFIG
 
 
 @pytest.fixture(scope="session")
 def default_nlu_data():
-    return DEFAULT_BF_NLU_DATA # DEFAULT_NLU_DATA
+    return DEFAULT_NLU_DATA
 
 
 @pytest.fixture(scope="session")

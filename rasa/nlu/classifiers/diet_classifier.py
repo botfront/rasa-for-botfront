@@ -803,7 +803,6 @@ class DIETClassifier(IntentClassifier, EntityExtractor):
         )
 
         entities = self.add_extractor_name(entities)
-        entities = self.clean_up_entities(message, entities)
         entities = message.get(ENTITIES, []) + entities
 
         return entities
@@ -869,7 +868,7 @@ class DIETClassifier(IntentClassifier, EntityExtractor):
         )
 
         entity_tag_specs = (
-            [l._asdict() for l in self._entity_tag_specs]
+            [tag_spec._asdict() for tag_spec in self._entity_tag_specs]
             if self._entity_tag_specs
             else []
         )

@@ -5,7 +5,7 @@ import uuid
 from sanic.request import Request
 from sanic.testing import SanicTestClient
 
-from typing import Tuple, Iterator
+from typing import Iterator, Callable
 
 import pytest
 from _pytest.tmpdir import TempdirFactory
@@ -25,7 +25,7 @@ from rasa.core.events import UserUttered
 from rasa.core.exporter import Exporter
 from rasa.core.policies import Policy
 from rasa.core.policies.memoization import AugmentedMemoizationPolicy
-from rasa.core.run import _create_app_without_api
+import rasa.core.run
 from rasa.core.tracker_store import InMemoryTrackerStore, TrackerStore
 from rasa.model import get_model
 from rasa.train import train_async
@@ -35,8 +35,6 @@ from tests.core.conftest import (
     DEFAULT_DOMAIN_PATH_WITH_SLOTS,
     DEFAULT_NLU_DATA,
     DEFAULT_STACK_CONFIG,
-    DEFAULT_BF_CONFIG_DATA,
-    DEFAULT_BF_NLU_DATA,
     DEFAULT_STORIES_FILE,
     END_TO_END_STORY_FILE,
     MOODBOT_MODEL_PATH,
@@ -50,6 +48,7 @@ DEFAULT_CONFIG_PATH = "rasa/cli/default_config.yml"
 # from a separatedly installable pytest-cli plugin.
 pytest_plugins = ["pytester"]
 
+
 # https://github.com/pytest-dev/pytest-asyncio/issues/68
 # this event_loop is used by pytest-asyncio, and redefining it
 # is currently the only way of changing the scope of this fixture
@@ -61,7 +60,7 @@ def event_loop(request: Request) -> Iterator[asyncio.AbstractEventLoop]:
 
 
 @pytest.fixture(scope="session")
-async def _trained_default_agent(tmpdir_factory: TempdirFactory) -> Tuple[Agent, str]:
+async def _trained_default_agent(tmpdir_factory: TempdirFactory) -> Agent:
     model_path = tmpdir_factory.mktemp("model").strpath
 
     agent = Agent(
@@ -155,8 +154,10 @@ def default_config() -> List[Policy]:
 
 
 @pytest.fixture(scope="session")
-def trained_async(tmpdir_factory):
-    async def _train(*args, output_path=None, **kwargs):
+def trained_async(tmpdir_factory: TempdirFactory) -> Callable:
+    async def _train(
+        *args: Any, output_path: Optional[Text] = None, **kwargs: Any
+    ) -> Optional[Text]:
         if output_path is None:
             output_path = str(tmpdir_factory.mktemp("models"))
 
@@ -167,14 +168,14 @@ def trained_async(tmpdir_factory):
 
 @pytest.fixture(scope="session")
 async def trained_rasa_model(
-    trained_async,
+    trained_async: Callable,
     default_domain_path: Text,
     default_nlu_data: Text,
     default_stories_file: Text,
 ) -> Text:
     trained_stack_model_path = await trained_async(
         domain=default_domain_path,
-        config=DEFAULT_BF_CONFIG_DATA,
+        config=DEFAULT_STACK_CONFIG,
         training_files=[default_nlu_data, default_stories_file],
     )
 
@@ -183,14 +184,14 @@ async def trained_rasa_model(
 
 @pytest.fixture(scope="session")
 async def trained_core_model(
-    trained_async,
+    trained_async: Callable,
     default_domain_path: Text,
     default_nlu_data: Text,
     default_stories_file: Text,
 ) -> Text:
     trained_core_model_path = await trained_async(
         domain=default_domain_path,
-        config=DEFAULT_BF_CONFIG_DATA,
+        config=DEFAULT_STACK_CONFIG,
         training_files=[default_stories_file],
     )
 
@@ -199,7 +200,7 @@ async def trained_core_model(
 
 @pytest.fixture(scope="session")
 async def trained_nlu_model(
-    trained_async,
+    trained_async: Callable,
     default_domain_path: Text,
     default_config: List[Policy],
     default_nlu_data: Text,
@@ -207,7 +208,7 @@ async def trained_nlu_model(
 ) -> Text:
     trained_nlu_model_path = await trained_async(
         domain=default_domain_path,
-        config=DEFAULT_BF_CONFIG_DATA,
+        config=DEFAULT_STACK_CONFIG,
         training_files=[default_nlu_data],
     )
 
@@ -244,7 +245,7 @@ async def rasa_server_secured(default_agent: Agent) -> Sanic:
 
 @pytest.fixture
 async def rasa_server_without_api() -> Sanic:
-    app = _create_app_without_api()
+    app = rasa.core.run._create_app_without_api()
     channel.register([RestInput()], app, "/webhooks/")
     return app
 

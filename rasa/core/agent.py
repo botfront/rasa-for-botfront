@@ -71,47 +71,80 @@ async def load_from_server(agent: "Agent", model_server: EndpointConfig) -> "Age
     return agent
 
 
-def _load_and_set_updated_model(
-    agent: "Agent", model_directory: Text, fingerprint: Text
-):
-    """Load the persisted model into memory and set the model on the agent."""
+def _load_interpreter(
+    agent: "Agent", nlu_path: Optional[Dict[Text, Text]], langs: List[Text],
+) -> Dict[Text, NaturalLanguageInterpreter]:
+    """Load the NLU interpreter at `nlu_path`.
 
-    logger.debug(f"Found new model with fingerprint {fingerprint}. Loading...")
+    Args:
+        agent: Instance of `Agent` to inspect for an interpreter if `nlu_path` is
+            `None`.
+        nlu_path: NLU model path.
 
+    Returns:
+        The NLU interpreter.
+    """
     # bf mod
-    core_path, nlu_paths = get_model_subdirectories(model_directory)
-    interpreter = {}
-    # If NLU models exist then create interpreter from them
-    if len(nlu_paths):
-        for lang, nlu_path in nlu_paths.items():
-            interpreter[lang] = NaturalLanguageInterpreter.create(os.path.join(model_directory, nlu_path))
-    # If no NLU models exist, then associate a RegexInterpreter to the language code found in the fingerprints,
-    # that should correspond to the default language in Botfront. This is to make sure an interpreter is available
-    # when training stories without NLU
-    else:
-        from rasa.model import fingerprint_from_path, FINGERPRINT_CONFIG_NLU_KEY
-        models_fingerprint = fingerprint_from_path(model_directory)
-        if len(models_fingerprint.get(FINGERPRINT_CONFIG_NLU_KEY).keys()):
-            interpreter = {list(models_fingerprint.get(FINGERPRINT_CONFIG_NLU_KEY).keys())[0]: RegexInterpreter()}
+    if nlu_path:
+        return {lang: NaturalLanguageInterpreter.create(path) for lang, path in nlu_path.items()}
+    return {lang: RegexInterpreter() for lang in langs}
     # /bf mod
 
+
+def _load_domain_and_policy_ensemble(
+    core_path: Optional[Text],
+) -> Tuple[Optional[Domain], Optional[PolicyEnsemble]]:
+    """Load the domain and policy ensemble from the model at `core_path`.
+
+    Args:
+        core_path: Core model path.
+
+    Returns:
+        An instance of `Domain` and `PolicyEnsemble` if `core_path` is not `None`.
+    """
+    policy_ensemble = None
     domain = None
+
     if core_path:
+        policy_ensemble = PolicyEnsemble.load(core_path)
         domain_path = os.path.join(os.path.abspath(core_path), DEFAULT_DOMAIN_PATH)
         domain = Domain.load(domain_path)
 
+    return domain, policy_ensemble
+
+
+def _load_and_set_updated_model(
+    agent: "Agent", model_directory: Text, fingerprint: Text
+) -> None:
+    """Load the persisted model into memory and set the model on the agent.
+
+    Args:
+        agent: Instance of `Agent` to update with the new model.
+        model_directory: Rasa model directory.
+        fingerprint: Fingerprint of the supplied model at `model_directory`.
+    """
+    logger.debug(f"Found new model with fingerprint {fingerprint}. Loading...")
+
+    core_path, nlu_path = get_model_subdirectories(model_directory)
+
     try:
-        policy_ensemble = None
-        if core_path:
-            policy_ensemble = PolicyEnsemble.load(core_path)
+        #bf
+        from rasa.model import fingerprint_from_path, FINGERPRINT_CONFIG_NLU_KEY
+        models_fingerprint = fingerprint_from_path(model_directory)
+        langs = list(models_fingerprint.get(FINGERPRINT_CONFIG_NLU_KEY).keys())
+        interpreter = _load_interpreter(agent, nlu_path, langs)
+        #/bf
+        domain, policy_ensemble = _load_domain_and_policy_ensemble(core_path)
+
         agent.update_model(
             domain, policy_ensemble, fingerprint, interpreter, model_directory
         )
+
         logger.debug("Finished updating agent to new model.")
-    except Exception:
+    except Exception as e:
         logger.exception(
-            "Failed to load policy and update agent. "
-            "The previous model will stay loaded instead."
+            f"Failed to update model. The previous model will stay loaded instead. "
+            f"Error: {e}"
         )
 
 
@@ -390,16 +423,14 @@ class Agent:
             )
 
         core_model, nlu_models = get_model_subdirectories(model_path)
+
         if nlu_models:
-            if not interpreter:
-                interpreter = {}
-                for lang, model_path in nlu_models.items():
-                    interpreter[lang] = NaturalLanguageInterpreter.create(os.path.join(model_path, model_path))
+            interpreter = {lang: NaturalLanguageInterpreter.create(path) for lang, path in nlu_models.items()}
         else:
             from rasa.model import fingerprint_from_path, FINGERPRINT_CONFIG_NLU_KEY
-            fingerprint = fingerprint_from_path(model_path)
-            if len(fingerprint.get(FINGERPRINT_CONFIG_NLU_KEY).keys()):
-                interpreter = {list(fingerprint.get(FINGERPRINT_CONFIG_NLU_KEY).keys())[0]: RegexInterpreter()}
+            models_fingerprint = fingerprint_from_path(model_path)
+            langs = list(models_fingerprint.get(FINGERPRINT_CONFIG_NLU_KEY).keys())
+            interpreter = {lang: RegexInterpreter() for lang in langs}
 
         domain = None
         ensemble = None
