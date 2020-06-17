@@ -1,0 +1,1 @@
+Move `rasa-addons` repo to `rasa-for-botfront`.
