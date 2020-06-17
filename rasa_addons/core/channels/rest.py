@@ -1,14 +1,16 @@
 import asyncio
 import rasa
+import os
 import logging
 import inspect
-from rasa.core.channels.channel import RestInput, UserMessage, CollectingOutputChannel
+from rasa.core.channels.channel import RestInput, UserMessage, CollectingOutputChannel, InputChannel
 from sanic.request import Request
 from sanic import Sanic, Blueprint, response
 from asyncio import Queue, CancelledError
 from typing import Text, List, Dict, Any, Optional, Callable, Iterable, Awaitable
 from rasa.core import utils
 from sanic.response import HTTPResponse
+from rasa_addons.core.channels.graphql import get_config_via_graphql
 
 logger = logging.getLogger(__name__)
 
@@ -132,6 +134,14 @@ class BotfrontRestOutput(CollectingOutputChannel):
 
 
 class BotfrontRestInput(RestInput):
+    @classmethod
+    def from_credentials(cls, credentials: Optional[Dict[Text, Any]]) -> InputChannel:
+        credentials = credentials or {}
+        return cls(credentials.get("config"))
+
+    def __init__(self, config: Optional[Dict[Text, Any]] = None):
+        self.config = config
+
     def get_metadata(self, request: Request) -> Optional[Dict[Text, Any]]:
         return request.json.get("customData", {})
 
@@ -147,6 +157,24 @@ class BotfrontRestInput(RestInput):
         @custom_webhook.route("/", methods=["GET"])
         async def health(request: Request) -> HTTPResponse:
             return response.json({"status": "ok"})
+
+        @custom_webhook.route("/props", methods=["GET"])
+        async def serve_rules(request: Request) -> HTTPResponse:
+            if self.config:
+                return response.json(self.config)
+            else:
+                props = {}
+                config = await get_config_via_graphql(
+                    os.environ.get("BF_URL"), os.environ.get("BF_PROJECT_ID")
+                )
+                if config and "credentials" in config:
+                    credentials = config.get("credentials", {})
+                    channel = credentials.get("rasa_addons.core.channels.rest_plus.BotfrontRestPlusInput")
+                    if channel is None: channel = credentials.get("rasa_addons.core.channels.BotfrontRestPlusInput")
+                    if channel is None: channel = credentials.get("rasa_addons.core.channels.rest.BotfrontRestInput")
+                    if channel is None: channel = credentials.get("rasa_addons.core.channels.BotfrontRestInput", {})
+                    props = channel.get("props", {})
+                return response.json(props)
 
         @custom_webhook.route("/webhook", methods=["POST"])
         async def receive(request: Request) -> HTTPResponse:

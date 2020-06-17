@@ -1,6 +1,7 @@
 import logging
 import warnings
 import uuid
+import os
 from sanic import Sanic, Blueprint, response
 from sanic.request import Request
 from sanic.response import HTTPResponse
@@ -11,6 +12,7 @@ from typing import Text, List, Dict, Any, Optional, Callable, Iterable, Awaitabl
 
 from rasa.core.channels.channel import UserMessage, InputChannel
 from rasa.core.channels.socketio import SocketIOInput, SocketIOOutput, SocketBlueprint
+from rasa_addons.core.channels.graphql import get_config_via_graphql
 
 logger = logging.getLogger(__name__)
 
@@ -134,6 +136,7 @@ class WebchatInput(SocketIOInput):
             credentials.get("session_persistence", False),
             credentials.get("socketio_path", "/socket.io"),
             credentials.get("cors_allowed_origins", "*"),
+            credentials.get("config"),
         )
 
     @classmethod
@@ -148,6 +151,7 @@ class WebchatInput(SocketIOInput):
         session_persistence: bool = False,
         socketio_path: Optional[Text] = "/socket.io",
         cors_allowed_origins="*",
+        config=None,
     ):
         self.bot_message_evt = bot_message_evt
         self.session_persistence = session_persistence
@@ -156,6 +160,7 @@ class WebchatInput(SocketIOInput):
         self.socketio_path = socketio_path
         self.cors_allowed_origins = cors_allowed_origins
         self.sio = None
+        self.config = config
 
     def get_output_channel(self) -> Optional["OutputChannel"]:
         if self.sio is None:
@@ -201,13 +206,32 @@ class WebchatInput(SocketIOInput):
 
         @sio.on("session_request", namespace=self.namespace)
         async def session_request(sid: Text, data: Optional[Dict]):
+            props = {}
             if data is None:
                 data = {}
             if "session_id" not in data or data["session_id"] is None:
                 data["session_id"] = uuid.uuid4().hex
             if self.session_persistence:
                 sio.enter_room(sid, data["session_id"])
-            await sio.emit("session_confirm", data["session_id"], room=sid)
+            if self.config is not None:
+                props = self.config
+            else:
+                config = await get_config_via_graphql(
+                    os.environ.get("BF_URL"), os.environ.get("BF_PROJECT_ID")
+                )
+                if config and "credentials" in config:
+                    credentials = config.get("credentials", {})
+                    channel = credentials.get("rasa_addons.core.channels.webchat_plus.WebchatPlusInput")
+                    if channel is None: channel = credentials.get("rasa_addons.core.channels.WebchatPlusInput")
+                    if channel is None: channel = credentials.get("rasa_addons.core.channels.webchat.WebchatInput")
+                    if channel is None: channel = credentials.get("rasa_addons.core.channels.WebchatInput", {})
+                    props = channel.get("props", {})
+
+            await sio.emit(
+                "session_confirm",
+                {"session_id": data["session_id"], "props": props},
+                room=sid,
+            )
             logger.debug(f"User {sid} connected to socketIO endpoint.")
 
         @sio.on(self.user_message_evt, namespace=self.namespace)
