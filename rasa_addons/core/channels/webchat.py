@@ -110,11 +110,11 @@ class WebchatOutput(SocketIOOutput):
     ) -> None:
         """Sends custom json to the output"""
 
-        json_message.setdefault("room", recipient_id)
-
-        await self.sio.emit(
-            self.bot_message_evt, **json_message, metadata=kwargs.get("metadata", {})
-        )
+        message = {
+            **json_message,
+            "metadata": kwargs.get("metadata", {}),
+        }
+        await self._send_message(recipient_id, message)
 
     async def send_attachment(
         self, recipient_id: Text, attachment: Dict[Text, Any], **kwargs: Any

@@ -36,9 +36,10 @@ class BotfrontRestOutput(CollectingOutputChannel):
             "quick_replies": quick_replies,
             "buttons": buttons,
             "attachment": attachment,
-            "custom": custom,
             "metadata": metadata,
         }
+
+        if custom: obj.update(custom)
 
         # filter out any values that are `None`
         return utils.remove_none_values(obj)
