@@ -303,7 +303,7 @@ class MessageProcessor:
         from rasa.core.slots import Slot # bf
         action = self.domain.action_for_index(
             max_confidence_index, self.action_endpoint,
-            tracker.slots.get("bf_forms", Slot("bf_forms")).initial_value, # bf
+            tracker.slots.get("bf_forms", Slot("bf_forms", initial_value=[])).initial_value, # bf
         )
 
         logger.debug(
@@ -453,7 +453,7 @@ class MessageProcessor:
 
     def _get_action(self, action_name, tracker) -> Optional[Action]: # bf
         from rasa.core.slots import Slot # bf
-        bf_form_slot = tracker.slots.get("bf_forms", Slot("bf_forms")).initial_value, # bf
+        bf_form_slot = tracker.slots.get("bf_forms", Slot("bf_forms", initial_value=[])).initial_value, # bf
         return self.domain.action_for_name(action_name, self.action_endpoint, bf_form_slot)
 
     async def _parse_message(self, message, tracker: DialogueStateTracker = None):
