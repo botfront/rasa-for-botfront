@@ -111,8 +111,6 @@ class BotfrontMappingPolicy(Policy):
 
                 idx = domain.index_for_action(ACTION_LISTEN_NAME)
                 prediction[idx] = 1
-        else:
-            logger.debug("Predicted intent is not handled by BotfrontMappingPolicy.")
         return prediction
 
     def persist(self, path: Text) -> None:
