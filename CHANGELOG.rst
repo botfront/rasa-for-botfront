@@ -2,6 +2,14 @@
 
 .. towncrier release notes start
 
+[1.10.3-bf.2] - 2020-07-13
+^^^^^^^^^^^^^^^^^^^^^
+
+Bugfixes
+--------
+- `#25 <https://github.com/botfront/rasa-for-botfront/pull/25>`_: Fix story fingerprinting resulting in overeager Core retraining. Base it off story file text content instead of StoryGraph.
+
+
 [1.10.3-bf.1] - 2020-07-01
 ^^^^^^^^^^^^^^^^^^^^^
 
