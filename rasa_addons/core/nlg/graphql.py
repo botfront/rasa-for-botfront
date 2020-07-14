@@ -1,6 +1,6 @@
 import logging
 from typing import Text, Any, Dict, Optional, List
-
+from rasa_addons.core.nlg.nlg_helper import rewrite_url
 from rasa.core.constants import DEFAULT_REQUEST_TIMEOUT
 from rasa.core.nlg.generator import NaturalLanguageGenerator
 from rasa.core.trackers import DialogueStateTracker, EventVerbosity
@@ -100,13 +100,13 @@ def nlg_request_format(
         "channel": {"name": output_channel},
     }
 
-
 class GraphQLNaturalLanguageGenerator(NaturalLanguageGenerator):
     """Like Rasa's CallbackNLG, but queries Botfront's GraphQL endpoint"""
 
     def __init__(self, **kwargs) -> None:
         endpoint_config = kwargs.get("endpoint_config")
         self.nlg_endpoint = endpoint_config
+        self.url_substitution_pattern = endpoint_config.kwargs.get('url_substitutions') or []
 
     async def generate(
         self,
@@ -152,6 +152,7 @@ class GraphQLNaturalLanguageGenerator(NaturalLanguageGenerator):
                         ", ".join([e.get("message") for e in response.get("errors")])
                     )
                 response = response.get("data", {}).get("getResponse", {})
+                rewrite_url(response, self.url_substitution_pattern)
                 if "customText" in response:
                     response["text"] = response.pop("customText")
                 if "customImage" in response:
