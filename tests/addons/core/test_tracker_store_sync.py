@@ -6,7 +6,7 @@ from test_tracker_store_sync_data import *
 # the local data should be updated
 def test_should_properly_update_tracker():
 
-    testTrackerStore = BotfrontTrackerStore(domain=None, url='test')
+    testTrackerStore = BotfrontTrackerStore(domain=None, host='test')
     #tracker with 1 event
     testTrackerStore._fetch_tracker = MagicMock(return_value = tracker1 )
     testTrackerStore.retrieve('test')
@@ -23,7 +23,7 @@ def test_should_properly_update_tracker():
 # the local data should not be updated
 def test_should_not_update_events():
 
-    testTrackerStore = BotfrontTrackerStore(domain=None, url='test')
+    testTrackerStore = BotfrontTrackerStore(domain=None, host='test')
      #tracker with 1 event
     testTrackerStore._fetch_tracker = MagicMock(return_value = tracker1 )
     testTrackerStore.retrieve('test')

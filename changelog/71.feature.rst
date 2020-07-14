@@ -1,1 +1,0 @@
-Read and handle automated forms from Botfront.

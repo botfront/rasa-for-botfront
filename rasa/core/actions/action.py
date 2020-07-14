@@ -2,12 +2,12 @@ import copy
 import json
 import logging
 import typing
-from typing import List, Text, Optional, Dict, Any, Generator
+from typing import List, Text, Optional, Dict, Any
 
 import aiohttp
 
 import rasa.core
-from rasa.constants import DOCS_BASE_URL
+from rasa.constants import DOCS_BASE_URL, DEFAULT_NLU_FALLBACK_INTENT_NAME
 from rasa.core import events
 from rasa.core.constants import (
     DEFAULT_REQUEST_TIMEOUT,
@@ -15,11 +15,13 @@ from rasa.core.constants import (
     USER_INTENT_OUT_OF_SCOPE,
     UTTER_PREFIX,
     RESPOND_PREFIX,
+    RULE_SNIPPET_ACTION_NAME,
 )
 from rasa.nlu.constants import (
     DEFAULT_OPEN_UTTERANCE_TYPE,
     OPEN_UTTERANCE_PREDICTION_KEY,
     RESPONSE_SELECTOR_PROPERTY_NAME,
+    INTENT_RANKING_KEY,
 )
 
 from rasa.core.events import (
@@ -28,16 +30,18 @@ from rasa.core.events import (
     ActionExecuted,
     Event,
     BotUttered,
+    SlotSet,
+    Form,
+    Restarted,
+    SessionStarted,
 )
 from rasa.utils.endpoints import EndpointConfig, ClientResponseError
-from typing import Coroutine, Union
 
 if typing.TYPE_CHECKING:
     from rasa.core.trackers import DialogueStateTracker
     from rasa.core.domain import Domain
     from rasa.core.nlg import NaturalLanguageGenerator
     from rasa.core.channels.channel import OutputChannel
-    from rasa.core.events import SlotSet
 
 logger = logging.getLogger(__name__)
 
@@ -60,8 +64,10 @@ ACTION_DEFAULT_ASK_REPHRASE_NAME = "action_default_ask_rephrase"
 ACTION_BACK_NAME = "action_back"
 
 
-def default_actions() -> List["Action"]:
+def default_actions(action_endpoint: Optional[EndpointConfig] = None) -> List["Action"]:
     """List default actions."""
+    from rasa.core.actions.two_stage_fallback import TwoStageFallbackAction
+
     return [
         ActionListen(),
         ActionRestart(),
@@ -71,13 +77,14 @@ def default_actions() -> List["Action"]:
         ActionRevertFallbackEvents(),
         ActionDefaultAskAffirmation(),
         ActionDefaultAskRephrase(),
+        TwoStageFallbackAction(action_endpoint),
         ActionBack(),
     ]
 
 
 def default_action_names() -> List[Text]:
     """List default action names."""
-    return [a.name() for a in default_actions()] + list(actions_bf.keys()) # bf
+    return [a.name() for a in default_actions()] + [RULE_SNIPPET_ACTION_NAME] + list(actions_bf.keys()) # bf
 
 
 def combine_user_with_default_actions(user_actions: List[Text]) -> List[Text]:
@@ -101,12 +108,15 @@ def combine_with_templates(
 
 
 def action_from_name(
-    name: Text, action_endpoint: Optional[EndpointConfig], user_actions: List[Text],
-    bf_form_slot = [] # bf
+    name: Text,
+    action_endpoint: Optional[EndpointConfig],
+    user_actions: List[Text],
+    should_use_form_action: bool = False,
+    bf_form_slot = [], # bf
 ) -> "Action":
     """Return an action instance for the name."""
 
-    defaults = {a.name(): a for a in default_actions()}
+    defaults = {a.name(): a for a in default_actions(action_endpoint)}
 
     if name in defaults and name not in user_actions:
         return defaults[name]
@@ -117,6 +127,10 @@ def action_from_name(
     elif name.endswith("_form") and any(slot.get("name") == name for slot in bf_form_slot): # bf
         return generate_bf_form_action(name)
     elif name in actions_bf: return actions_bf[name] # bf
+    elif should_use_form_action:
+        from rasa.core.actions.forms import FormAction
+
+        return FormAction(name, action_endpoint)
     else:
         return RemoteAction(name, action_endpoint)
 
@@ -182,7 +196,8 @@ class Action:
                 ``tracker.get_slot(slot_name)`` and the most recent user
                 message is ``tracker.latest_message.text``.
             domain (Domain): the bot's domain
-
+            metadata: dictionary that can be sent to action server with custom
+            data.
         Returns:
             List[Event]: A list of :class:`rasa.core.events.Event` instances
         """
@@ -229,11 +244,12 @@ class ActionRetrieveResponse(Action):
             return []
 
         logger.debug(f"Picking response from selector of type {query_key}")
+        selected = response_selector_properties[query_key]
         message = {
-            "text": response_selector_properties[query_key][
-                OPEN_UTTERANCE_PREDICTION_KEY
-            ]["name"]
+            "text": selected[OPEN_UTTERANCE_PREDICTION_KEY]["name"],
+            "template_name": selected["full_retrieval_intent"],
         }
+
         return [create_bot_utterance(message)]
 
     def name(self) -> Text:
@@ -266,10 +282,11 @@ class ActionUtterTemplate(Action):
         if message is None:
             if not self.silent_fail:
                 logger.error(
-                    "Couldn't create message for template '{}'."
+                    "Couldn't create message for response '{}'."
                     "".format(self.template_name)
                 )
             return []
+        message["template_name"] = self.template_name
 
         return [create_bot_utterance(message)]
 
@@ -296,7 +313,7 @@ class ActionBack(ActionUtterTemplate):
         tracker: "DialogueStateTracker",
         domain: "Domain",
     ) -> List[Event]:
-        # only utter the template if it is available
+        # only utter the response if it is available
         evts = await super().run(output_channel, nlg, tracker, domain)
 
         return evts + [UserUtteranceReverted(), UserUtteranceReverted()]
@@ -324,7 +341,7 @@ class ActionListen(Action):
 class ActionRestart(ActionUtterTemplate):
     """Resets the tracker to its initial state.
 
-    Utters the restart template if available."""
+    Utters the restart response if available."""
 
     def name(self) -> Text:
         return ACTION_RESTART_NAME
@@ -339,9 +356,7 @@ class ActionRestart(ActionUtterTemplate):
         tracker: "DialogueStateTracker",
         domain: "Domain",
     ) -> List[Event]:
-        from rasa.core.events import Restarted
-
-        # only utter the template if it is available
+        # only utter the response if it is available
         evts = await super().run(output_channel, nlg, tracker, domain)
 
         return evts + [Restarted()]
@@ -354,6 +369,9 @@ class ActionSessionStart(Action):
     session.
     """
 
+    # Optional arbitrary metadata that can be passed to the SessionStarted event.
+    metadata: Optional[Dict[Text, Any]] = None
+
     def name(self) -> Text:
         return ACTION_SESSION_START_NAME
 
@@ -362,8 +380,6 @@ class ActionSessionStart(Action):
         tracker: "DialogueStateTracker",
     ) -> List["SlotSet"]:
         """Fetch SlotSet events from tracker and carry over key, value and metadata."""
-
-        from rasa.core.events import SlotSet
 
         return [
             SlotSet(key=event.key, value=event.value, metadata=event.metadata)
@@ -378,9 +394,7 @@ class ActionSessionStart(Action):
         tracker: "DialogueStateTracker",
         domain: "Domain",
     ) -> List[Event]:
-        from rasa.core.events import SessionStarted
-
-        _events = [SessionStarted()]
+        _events = [SessionStarted(metadata=self.metadata)]
 
         if domain.session_config.carry_over_slots:
             _events.extend(self._slot_set_events_from_tracker(tracker))
@@ -407,9 +421,7 @@ class ActionDefaultFallback(ActionUtterTemplate):
         tracker: "DialogueStateTracker",
         domain: "Domain",
     ) -> List[Event]:
-        from rasa.core.events import UserUtteranceReverted
-
-        # only utter the template if it is available
+        # only utter the response if it is available
         evts = await super().run(output_channel, nlg, tracker, domain)
 
         return evts + [UserUtteranceReverted()]
@@ -428,8 +440,6 @@ class ActionDeactivateForm(Action):
         tracker: "DialogueStateTracker",
         domain: "Domain",
     ) -> List[Event]:
-        from rasa.core.events import Form, SlotSet
-
         return [Form(None), SlotSet(REQUESTED_SLOT, None)]
 
 
@@ -509,6 +519,7 @@ class RemoteAction(Action):
                 )
                 if not draft:
                     continue
+                draft["template_name"] = template
             else:
                 draft = {}
 
@@ -532,7 +543,6 @@ class RemoteAction(Action):
         domain: "Domain",
     ) -> List[Event]:
         json_body = self._action_call_format(tracker, domain)
-
         if not self.action_endpoint:
             logger.error(
                 "The model predicted the custom action '{}', "
@@ -715,6 +725,14 @@ class ActionDefaultAskAffirmation(Action):
         domain: "Domain",
     ) -> List[Event]:
         intent_to_affirm = tracker.latest_message.intent.get("name")
+
+        intent_ranking = tracker.latest_message.intent.get(INTENT_RANKING_KEY, [])
+        if (
+            intent_to_affirm == DEFAULT_NLU_FALLBACK_INTENT_NAME
+            and len(intent_ranking) > 1
+        ):
+            intent_to_affirm = intent_ranking[1]["name"]
+
         affirmation_message = f"Did you mean '{intent_to_affirm}'?"
 
         message = {
@@ -723,6 +741,7 @@ class ActionDefaultAskAffirmation(Action):
                 {"title": "Yes", "payload": f"/{intent_to_affirm}"},
                 {"title": "No", "payload": f"/{USER_INTENT_OUT_OF_SCOPE}"},
             ],
+            "template_name": self.name(),
         }
 
         return [create_bot_utterance(message)]

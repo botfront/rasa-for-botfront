@@ -7,7 +7,6 @@ from rasa import data
 from rasa.core.domain import Domain, InvalidDomain
 from rasa.core.interpreter import RegexInterpreter, NaturalLanguageInterpreter
 from rasa.core.training.structures import StoryGraph
-from rasa.core.training.dsl import StoryFileReader
 from rasa.importers import utils
 from rasa.importers.importer import TrainingDataImporter
 from rasa.nlu.training_data import TrainingData
@@ -63,7 +62,7 @@ class BotfrontFileImporter(TrainingDataImporter):
         exclusion_percentage: Optional[int] = None,
     ) -> StoryGraph:
 
-        story_steps = await StoryFileReader.read_from_files(
+        return await utils.story_graph_from_paths(
             self._story_files,
             await self.get_domain(),
             interpreter,
@@ -71,12 +70,13 @@ class BotfrontFileImporter(TrainingDataImporter):
             use_e2e,
             exclusion_percentage,
         )
-        return StoryGraph(story_steps)
 
     async def get_stories_hash(self):
         # Use a file hash of stories file to figure out Core fingerprint, instead of
         # storygraph object hash which is unstable
-        return get_file_hash(self._story_files[0])
+        if isinstance(self._story_files, list) and len(self._story_files):
+            return get_file_hash(self._story_files[0])
+        return 0
 
     async def get_nlu_data(self, languages=True) -> Dict[Text, TrainingData]:
         language = None

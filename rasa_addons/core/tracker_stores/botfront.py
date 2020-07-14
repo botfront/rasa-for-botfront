@@ -70,7 +70,7 @@ def _start_sweeper(tracker_store, break_time):
 
 
 class BotfrontTrackerStore(TrackerStore):
-    def __init__(self, domain, url, **kwargs):
+    def __init__(self, domain, host, **kwargs):
 
         self.project_id = os.environ.get("BF_PROJECT_ID")
         self.tracker_persist_time = kwargs.get("tracker_persist_time", 3600)
@@ -84,8 +84,8 @@ class BotfrontTrackerStore(TrackerStore):
         self.sweeper.start()
         api_key = os.environ.get("API_KEY")
         headers = [{"Authorization": api_key}] if api_key else []
-        self.graphql_endpoint = HTTPEndpoint(url, *headers)
-        self.url = url
+        self.graphql_endpoint = HTTPEndpoint(host, *headers)
+        self.host = host
         self.environement = os.environ.get("BOTFRONT_ENV", "development")
 
         super(BotfrontTrackerStore, self).__init__(domain)
@@ -102,7 +102,7 @@ class BotfrontTrackerStore(TrackerStore):
         except urllib.error.URLError as e:
             message = e.reason
             logger.error(
-                f"Something went wrong getting the tracker from {self.url}: {message}"
+                f"Something went wrong getting the tracker from {self.host}: {message}"
             )
             return {}
 

@@ -91,7 +91,7 @@ class ActionBotfrontForm(Action):
                     self.form_spec = clean_none_values(form)
             if not len(self.form_spec):
                 logger.debug(
-                    f"Could not retrieve form '{tracker.active_form}', there is something wrong with your domain."
+                    f"Could not retrieve form '{tracker.active_loop}', there is something wrong with your domain."
                 )
                 return [Form(None)]
 
@@ -264,7 +264,7 @@ class ActionBotfrontForm(Action):
                     # check whether the slot should be
                     # filled from trigger intent mapping
                     should_fill_trigger_slot = (
-                        tracker.active_form.get("name") != self.name()
+                        tracker.active_loop.get("name") != self.name()
                         and other_slot_mapping["type"] == "from_trigger_intent"
                         and self.intent_is_desired(other_slot_mapping, tracker)
                     )
@@ -466,12 +466,12 @@ class ActionBotfrontForm(Action):
         tracker: "DialogueStateTracker",
         domain: "Domain",
     ) -> List[Event]:
-        if tracker.active_form.get("name") is not None:
-            logger.debug(f"The form '{tracker.active_form}' is active")
+        if tracker.active_loop.get("name") is not None:
+            logger.debug(f"The form '{tracker.active_loop}' is active")
         else:
             logger.debug("There is no active form")
 
-        if tracker.active_form.get("name") == self.name():
+        if tracker.active_loop.get("name") == self.name():
             return []
         else:
             logger.debug(f"Activated the form '{self.name()}'")
@@ -514,7 +514,7 @@ class ActionBotfrontForm(Action):
         tracker: "DialogueStateTracker",
         domain: "Domain",
     ) -> List[Event]:
-        if tracker.latest_action_name == "action_listen" and tracker.active_form.get(
+        if tracker.latest_action_name == "action_listen" and tracker.active_loop.get(
             "validate", True
         ):
             logger.debug(f"Validating user input '{tracker.latest_message}'")
