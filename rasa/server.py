@@ -928,7 +928,7 @@ def create_app(
             raise ErrorResponse(409, "Conflict", "Loaded model file not found.")
 
         model_directory = eval_agent.model_directory
-        model_directory = os.path.abspath(os.path.join(model_directory, os.pardir)) # bf
+        model_directory = os.path.abspath(model_directory) # bf
         _, nlu_model = model.get_model_subdirectories(model_directory)
 
         try:
