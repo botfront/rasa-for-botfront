@@ -29,7 +29,7 @@ class BotfrontHandoffPolicy(Policy):
         inserted back into the tracker and fed back into the output channel.
         
         Once the handoff times out or is explictly terminated by a first
-        responder using the HANGUP_WORD, the policy goes back to its pre-
+        responder using the hang up command, the policy goes back to its pre-
         activation behavior.
 
         Requires setting BF_PORTAL_URL and RASA_URL.
@@ -38,10 +38,9 @@ class BotfrontHandoffPolicy(Policy):
     defaults = {
         "service": "slack",
         "triggers": ["handoff"],
-        "token": None,
+        "realm": None,
         "room_prefix": "support_",
         "timeout": 60 * 2,  # seconds before hanging up
-        "hangup_word": "**hangup",
         "first_responders": [],
         "announcement_room": None,
     }
@@ -55,25 +54,30 @@ class BotfrontHandoffPolicy(Policy):
         self.endpoint = EndpointConfig(url=os.environ.get("BF_PORTAL_URL"))
         self._load_params(**kwargs)
 
+    def _print_auth_link(self, response):
+        auth_link = response.get("auth_link")
+        if auth_link:
+            logger.error(auth_link)
+
     def get_params(self) -> Dict[Text, Any]:
         return {
             "service": self.service,
-            "token": self.token,
+            "realm": self.realm,
             "room_prefix": self.room_prefix,
-            "hangup_word": self.hangup_word,
+            "triggers": self.triggers,
             "first_responders": self.first_responders,
             "announcement_room": self.announcement_room,
             "rasa_url": os.environ.get("RASA_URL"),
+            "project_id": os.environ.get("BF_PROJECT_ID"),
         }
 
     def _load_params(self, **kwargs: Dict[Text, Any]) -> None:
         config = copy.deepcopy(self.defaults)
         config.update(kwargs)
         service = config.pop("service", None)
-        token = config.pop("token", None)
+        realm = config.pop("realm", None)
         triggers = config.pop("triggers", [])
         room_prefix = config.pop("room_prefix", None)
-        hangup_word = config.pop("hangup_word", None)
         first_responders = config.pop("first_responders", [])
         announcement_room = config.pop("announcement_room", None)
         try:
@@ -82,12 +86,10 @@ class BotfrontHandoffPolicy(Policy):
             raise Exception("Timeout must be a numerical value.")
         if service not in SUPPORTED_SERVICES:
             raise Exception("Handoff service not supported.")
-        if token is None:
-            raise Exception("Token not supplied.")
+        if realm is None:
+            raise Exception("Realm not supplied.")
         if not isinstance(room_prefix, str):
             raise Exception("Channel prefix must be a string.")
-        if not isinstance(hangup_word, str):
-            raise Exception("Hangup word must be a string.")
         if not isinstance(triggers, list) or any(
             not isinstance(t, str) for t in triggers
         ):
@@ -97,10 +99,9 @@ class BotfrontHandoffPolicy(Policy):
         ):
             raise Exception("Invalid list of first responders.")
         self.service = service
-        self.token = token
+        self.realm = realm
         self.triggers = triggers
         self.room_prefix = room_prefix
-        self.hangup_word = hangup_word
         self.first_responders = first_responders
         self.active_handoffs = {}
         self.announcement_room = announcement_room
@@ -117,7 +118,7 @@ class BotfrontHandoffPolicy(Policy):
         return await self.endpoint.request(
             json={"params": self.get_params(), **body},
             method="post",
-            subpath=f"/handoff/{os.environ.get('BF_PROJECT_ID')}/{route}",
+            subpath=f"/handoff/{route}",
         )
 
     def predict_action_probabilities(
@@ -148,6 +149,12 @@ class BotfrontHandoffPolicy(Policy):
             events = []
             for e in reversed(tracker.events):
                 event = e.as_dict()
+                if (
+                    event.get("event") == "slot"
+                    and event.get("name") == "handoff_info"
+                    and event.get("value", {}).get("active") is False
+                ):
+                    break
                 if event.get("event") not in ["user", "bot"]:
                     continue
                 if event.get("metadata", {}).get("from_handoff") is True or event.get(
@@ -157,7 +164,7 @@ class BotfrontHandoffPolicy(Policy):
                 events += [event]
             events.reverse()
             logger.debug("Activating BotfrontHandoffPolicy.")
-            asyncio.get_running_loop().create_task(
+            task = asyncio.get_running_loop().create_task(
                 self._call_portal(
                     "activate",
                     {
@@ -168,11 +175,12 @@ class BotfrontHandoffPolicy(Policy):
                     },
                 )
             )
+            task.add_done_callback(lambda r: self._print_auth_link(r.result()))
             prediction[domain.index_for_action(ACTION_LISTEN_NAME)] = 1
 
         elif handoff_active is True:
             logger.debug("Listening while BotfrontHandoffPolicy is activated.")
-            asyncio.get_running_loop().create_task(
+            task = asyncio.get_running_loop().create_task(
                 self._call_portal("post", {"handoff": handoff, "message": message,})
             )
             prediction[domain.index_for_action(ACTION_LISTEN_NAME)] = 1
@@ -183,10 +191,9 @@ class BotfrontHandoffPolicy(Policy):
         config_file = os.path.join(path, "botfront_handoff_policy.json")
         meta = {
             "service": self.service,
-            "token": self.token,
+            "realm": self.realm,
             "triggers": self.triggers,
             "room_prefix": self.room_prefix,
-            "hangup_word": self.hangup_word,
             "first_responders": self.first_responders,
             "announcement_room": self.announcement_room,
         }
