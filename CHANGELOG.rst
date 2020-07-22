@@ -2,6 +2,14 @@
 
 .. towncrier release notes start
 
+[1.10.3-bf.3] - 2020-07-22
+^^^^^^^^^^^^^^^^^^^^^
+
+Improvements
+--------
+- `cbff36b <https://github.com/botfront/rasa-for-botfront/commit/cbff36b7704baecda63720473456777daad968a5>`_: Re-allow Rasa container to be run as non-root.
+
+
 [1.10.3-bf.2] - 2020-07-13
 ^^^^^^^^^^^^^^^^^^^^^
 
