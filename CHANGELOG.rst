@@ -5,6 +5,11 @@
 [1.10.3-bf.3] - 2020-07-22
 ^^^^^^^^^^^^^^^^^^^^^
 
+Features
+--------
+- `d16e75f <https://github.com/botfront/rasa-for-botfront/commit/d16e75fc1b4461bcdc1168ea7a16bf322f977ca7>`_: Support for image url text replacements in BotfrontTemplatedNaturalLanguageGenerator and GraphQLNaturalLanguageGenerator.
+
+
 Improvements
 --------
 - `cbff36b <https://github.com/botfront/rasa-for-botfront/commit/cbff36b7704baecda63720473456777daad968a5>`_: Re-allow Rasa container to be run as non-root.
