@@ -1,7 +1,7 @@
 import copy
 import logging
 from collections import defaultdict
-
+from rasa_addons.core.nlg.nlg_helper import rewrite_url
 from rasa.core.trackers import DialogueStateTracker
 from typing import Text, Any, Dict, Optional, List
 
@@ -14,6 +14,8 @@ logger = logging.getLogger(__name__)
 class BotfrontTemplatedNaturalLanguageGenerator(NaturalLanguageGenerator):
     def __init__(self, **kwargs) -> None:
         domain = kwargs.get("domain")
+        templated_endpoint = kwargs.get("endpoint_config")
+        self.url_substitution_pattern = templated_endpoint.kwargs.get('url_substitutions') or []
         self.templates = domain.templates if domain else []
 
     def _templates_for_utter_action(self, utter_action, output_channel, **kwargs):
@@ -85,10 +87,12 @@ class BotfrontTemplatedNaturalLanguageGenerator(NaturalLanguageGenerator):
             fallback_language=fallback_language,
         )
         if "language" in message: del message["language"]
+        rewrite_url(message, self.url_substitution_pattern)
         metadata = message.pop("metadata", {}) or {}
         for key in metadata: message[key] = metadata[key]
 
         return message
+
 
     def generate_from_slots(
         self,
