@@ -30,7 +30,7 @@ class NaturalLanguageInterpreter:
 
     @staticmethod
     def create(
-        obj: Union["NaturalLanguageInterpreter", EndpointConfig, Text, None],
+        obj: Union["NaturalLanguageInterpreter", EndpointConfig, Text, Dict[Text, Optional[Text]], None],
         # this second parameter is deprecated!
         endpoint: Optional[EndpointConfig] = None,
     ) -> "NaturalLanguageInterpreter":
@@ -48,25 +48,28 @@ class NaturalLanguageInterpreter:
             )
             obj = endpoint or obj
 
-        # <bf
-        from rasa.nlu.model import UnsupportedModelError
-        try:
-            if isinstance(obj, NaturalLanguageInterpreter):
-                return obj
-            elif isinstance(obj, str) and os.path.exists(obj):
+        if isinstance(obj, NaturalLanguageInterpreter):
+            return obj
+        # bf>
+        elif isinstance(obj, dict):
+            from rasa_addons.core.interpreter import MultilingualNLUInterpreter
+            return MultilingualNLUInterpreter(model_directory=obj)
+        elif isinstance(obj, str) and os.path.exists(obj):
+            from rasa.nlu.model import UnsupportedModelError
+            try:
                 return RasaNLUInterpreter(model_directory=obj)
-            elif isinstance(obj, str) and not os.path.exists(obj):
-                # user passed in a string, but file does not exist
-                logger.warning(
-                    f"No local NLU model '{obj}' found. Using RegexInterpreter instead."
-                )
+            except UnsupportedModelError as e:
+                logger.warning(e.message)
                 return RegexInterpreter()
-            else:
-                return _create_from_endpoint_config(obj)
-        except UnsupportedModelError as e:
-            logger.warning(e.message)
-            return RegexInterpreter()
         # </bf
+        elif isinstance(obj, str) and not os.path.exists(obj):
+            # user passed in a string, but file does not exist
+            logger.warning(
+                f"No local NLU model '{obj}' found. Using RegexInterpreter instead."
+            )
+            return RegexInterpreter()
+        else:
+            return _create_from_endpoint_config(obj)
 
 
 class RegexInterpreter(NaturalLanguageInterpreter):

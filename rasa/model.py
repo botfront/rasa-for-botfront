@@ -216,13 +216,15 @@ def get_model_subdirectories(
     # bf mod
     # nlu_path = os.path.join(unpacked_model_path, "nlu")
     nlu_models = list(filter(lambda d: d.startswith("nlu"), os.listdir(unpacked_model_path)))
-    nlu_paths = {}
+
+    models_fingerprint = fingerprint_from_path(unpacked_model_path)
+    nlu_paths = {lang: None for lang in models_fingerprint.get(FINGERPRINT_CONFIG_NLU_KEY).keys()}
     try:
         for model in nlu_models:
             lang = model.split("-")[1]
             nlu_paths[lang] = os.path.join(unpacked_model_path, model)
     except Exception:
-        nlu_paths = {}
+        pass
 
     if not os.path.isdir(core_path):
         core_path = None
@@ -239,9 +241,9 @@ def get_model_subdirectories(
 
 
 def create_package_rasa(
-        training_directory: Text,
-        output_filename: Text,
-        fingerprint: Optional[Fingerprint] = None,
+    training_directory: Text,
+    output_filename: Text,
+    fingerprint: Optional[Fingerprint] = None,
 ) -> Text:
     """Create a zipped Rasa model from trained model files.
 

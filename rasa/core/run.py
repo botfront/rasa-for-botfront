@@ -232,17 +232,13 @@ async def load_agent_on_start(
     (hence the `app` and `loop` arguments)."""
 
     # noinspection PyBroadException
-    # bf mod
     try:
         with model.get_model(model_path) as unpacked_model:
-            _, nlu_models = model.get_model_subdirectories(unpacked_model)
-            _interpreter = {}
-            for lang, nlu_model in nlu_models.items():
-                _interpreter[lang] = NaturalLanguageInterpreter.create(endpoints.nlu or nlu_model)
+            _, nlu_model = model.get_model_subdirectories(unpacked_model)
+            _interpreter = NaturalLanguageInterpreter.create(endpoints.nlu or nlu_model)
     except Exception:
         logger.debug(f"Could not load interpreter from '{model_path}'.")
-        _interpreter = {}
-    # /bf mod
+        _interpreter = None
 
     _broker = EventBroker.create(endpoints.event_broker)
     _tracker_store = TrackerStore.create(endpoints.tracker_store, event_broker=_broker)

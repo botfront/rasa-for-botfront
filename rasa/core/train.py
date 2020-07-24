@@ -24,7 +24,7 @@ async def train(
     domain_file: Union[Domain, Text],
     training_resource: Union[Text, "TrainingDataImporter"],
     output_path: Text,
-    interpreter: Optional[Dict[Text, "NaturalLanguageInterpreter"]] = None,
+    interpreter: Optional["NaturalLanguageInterpreter"] = None,
     endpoints: "AvailableEndpoints" = None,
     policy_config: Optional[Union[Text, Dict]] = None,
     exclusion_percentage: Optional[int] = None,
@@ -46,7 +46,7 @@ async def train(
         domain_file,
         generator=endpoints.nlg,
         action_endpoint=endpoints.action,
-        interpreter=interpreter or {},  # fix to avoid model not ready error
+        interpreter=interpreter,
         policies=policies,
     )
 

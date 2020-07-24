@@ -72,8 +72,8 @@ async def load_from_server(agent: "Agent", model_server: EndpointConfig) -> "Age
 
 
 def _load_interpreter(
-    agent: "Agent", nlu_path: Optional[Dict[Text, Text]], langs: List[Text],
-) -> Dict[Text, NaturalLanguageInterpreter]:
+    agent: "Agent", nlu_path: Optional[Text]
+) -> NaturalLanguageInterpreter:
     """Load the NLU interpreter at `nlu_path`.
 
     Args:
@@ -84,11 +84,12 @@ def _load_interpreter(
     Returns:
         The NLU interpreter.
     """
-    # bf mod
     if nlu_path:
-        return {lang: NaturalLanguageInterpreter.create(path) for lang, path in nlu_path.items()}
-    return {lang: RegexInterpreter() for lang in langs}
-    # /bf mod
+        from rasa.core.interpreter import RasaNLUInterpreter
+
+        return RasaNLUInterpreter(model_directory=nlu_path)
+
+    return agent.interpreter or RegexInterpreter()
 
 
 def _load_domain_and_policy_ensemble(
@@ -128,12 +129,8 @@ def _load_and_set_updated_model(
     core_path, nlu_path = get_model_subdirectories(model_directory)
 
     try:
-        #bf
-        from rasa.model import fingerprint_from_path, FINGERPRINT_CONFIG_NLU_KEY
-        models_fingerprint = fingerprint_from_path(model_directory)
-        langs = list(models_fingerprint.get(FINGERPRINT_CONFIG_NLU_KEY).keys())
-        interpreter = _load_interpreter(agent, nlu_path, langs)
-        #/bf
+        # interpreter = _load_interpreter(agent, nlu_path)
+        interpreter = NaturalLanguageInterpreter.create(nlu_path) # bf
         domain, policy_ensemble = _load_domain_and_policy_ensemble(core_path)
 
         agent.update_model(
@@ -265,7 +262,7 @@ async def load_agent(
     model_path: Optional[Text] = None,
     model_server: Optional[EndpointConfig] = None,
     remote_storage: Optional[Text] = None,
-    interpreter: Optional[Dict[Text, NaturalLanguageInterpreter]] = None,
+    interpreter: Optional[NaturalLanguageInterpreter] = None,
     generator: Union[EndpointConfig, NaturalLanguageGenerator] = None,
     tracker_store: Optional[TrackerStore] = None,
     lock_store: Optional[LockStore] = None,
@@ -330,7 +327,7 @@ class Agent:
         self,
         domain: Union[Text, Domain, None] = None,
         policies: Union[PolicyEnsemble, List[Policy], None] = None,
-        interpreter: Optional[Dict[Text, NaturalLanguageInterpreter]] = None,
+        interpreter: Optional[NaturalLanguageInterpreter] = None,
         generator: Union[EndpointConfig, NaturalLanguageGenerator, None] = None,
         tracker_store: Optional[TrackerStore] = None,
         lock_store: Optional[LockStore] = None,
@@ -354,7 +351,7 @@ class Agent:
             self.policy_ensemble, self.domain
         )
 
-        self.interpreter = interpreter or RegexInterpreter()
+        self.interpreter = NaturalLanguageInterpreter.create(interpreter)
 
         self.nlg = NaturalLanguageGenerator.create(generator, self.domain)
         self.tracker_store = self.create_tracker_store(tracker_store, self.domain)
@@ -372,16 +369,14 @@ class Agent:
         domain: Optional[Domain],
         policy_ensemble: Optional[PolicyEnsemble],
         fingerprint: Optional[Text],
-        interpreter: Optional[Dict[Text, NaturalLanguageInterpreter]] = None,
+        interpreter: Optional[NaturalLanguageInterpreter] = None,
         model_directory: Optional[Text] = None,
     ) -> None:
         self.domain = self._create_domain(domain)
         self.policy_ensemble = policy_ensemble
 
         if interpreter:
-            self.interpreter = {}
-            for lang in interpreter.keys():
-                self.interpreter[lang] = NaturalLanguageInterpreter.create(interpreter[lang])
+            self.interpreter = NaturalLanguageInterpreter.create(interpreter)
 
         self._set_fingerprint(fingerprint)
 
@@ -396,7 +391,7 @@ class Agent:
     def load(
         cls,
         model_path: Text,
-        interpreter: Optional[Dict[Text, NaturalLanguageInterpreter]] = None,
+        interpreter: Optional[NaturalLanguageInterpreter] = None,
         generator: Union[EndpointConfig, NaturalLanguageGenerator] = None,
         tracker_store: Optional[TrackerStore] = None,
         lock_store: Optional[LockStore] = None,
@@ -422,15 +417,10 @@ class Agent:
                 "a model, use `agent.load_data(...)` instead.".format(model_path)
             )
 
-        core_model, nlu_models = get_model_subdirectories(model_path)
+        core_model, nlu_model = get_model_subdirectories(model_path)
 
-        if nlu_models:
-            interpreter = {lang: NaturalLanguageInterpreter.create(path) for lang, path in nlu_models.items()}
-        else:
-            from rasa.model import fingerprint_from_path, FINGERPRINT_CONFIG_NLU_KEY
-            models_fingerprint = fingerprint_from_path(model_path)
-            langs = list(models_fingerprint.get(FINGERPRINT_CONFIG_NLU_KEY).keys())
-            interpreter = {lang: RegexInterpreter() for lang in langs}
+        if not interpreter and nlu_model:
+            interpreter = NaturalLanguageInterpreter.create(nlu_model)
 
         domain = None
         ensemble = None
@@ -956,7 +946,7 @@ class Agent:
     @staticmethod
     def load_local_model(
         model_path: Text,
-        interpreter: Optional[Dict[Text, NaturalLanguageInterpreter]] = None,
+        interpreter: Optional[NaturalLanguageInterpreter] = None,
         generator: Union[EndpointConfig, NaturalLanguageGenerator] = None,
         tracker_store: Optional[TrackerStore] = None,
         lock_store: Optional[LockStore] = None,
@@ -992,7 +982,7 @@ class Agent:
     def load_from_remote_storage(
         remote_storage: Text,
         model_name: Text,
-        interpreter: Optional[Dict[Text, NaturalLanguageInterpreter]] = None,
+        interpreter: Optional[NaturalLanguageInterpreter] = None,
         generator: Union[EndpointConfig, NaturalLanguageGenerator] = None,
         tracker_store: Optional[TrackerStore] = None,
         lock_store: Optional[LockStore] = None,

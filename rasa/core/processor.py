@@ -65,7 +65,7 @@ DEFAULT_INTENTS = [
 class MessageProcessor:
     def __init__(
         self,
-        interpreter: Dict[Text, NaturalLanguageInterpreter],
+        interpreter: NaturalLanguageInterpreter,
         policy_ensemble: PolicyEnsemble,
         domain: Domain,
         tracker_store: TrackerStore,
@@ -465,21 +465,10 @@ class MessageProcessor:
                 message.text, message.message_id, tracker
             )
         else:
-            # bf mod >
-            fallback_language_slot = tracker.slots.get("fallback_language")
-            fallback_language = fallback_language_slot.initial_value if fallback_language_slot else None
-            lang = (message.metadata or {}).get("language") or fallback_language
-            from rasa.core.interpreter import NaturalLanguageInterpreter
-            if isinstance(self.interpreter, dict):
-                if not self.interpreter.get(lang) and fallback_language and lang != fallback_language:
-                    logger.warning(f"No trained model for language {lang} found. Using default {fallback_language} instead.")
-                    lang = fallback_language
-                elif not self.interpreter.get(lang):
-                    raise ValueError(f"No trained model for language {lang} found, and not default language set.")
-                parse_data = await self.interpreter.get(lang).parse(message.text, message.message_id, tracker)
-            elif isinstance(self.interpreter, NaturalLanguageInterpreter):
-                parse_data = await self.interpreter.parse(message.text, message.message_id, tracker)
-            # </ bf mod
+            parse_data = await self.interpreter.parse(
+                message.text, message.message_id, tracker, metadata=message.metadata,
+            )
+
         logger.debug(
             "Received user message '{}' with intent '{}' "
             "and entities '{}'".format(

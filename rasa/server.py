@@ -928,12 +928,11 @@ def create_app(
             raise ErrorResponse(409, "Conflict", "Loaded model file not found.")
 
         model_directory = eval_agent.model_directory
-        model_directory = os.path.abspath(model_directory) # bf
         _, nlu_model = model.get_model_subdirectories(model_directory)
 
         try:
             language = request.args.get("language", None) # bf
-            evaluation = run_evaluation(data_path, nlu_model.get(language)) #bf
+            evaluation = run_evaluation(data_path, nlu_model.get(language)) # bf
             return response.json(evaluation)
         except Exception as e:
             logger.debug(traceback.format_exc())
@@ -1003,27 +1002,18 @@ def create_app(
             "No text message defined in request_body. Add text message to request body "
             "in order to obtain the intent and extracted entities.",
         )
-        if not request.json.get("lang"):
-            raise ErrorResponse(
-                400, "Bad Request", "'lang' property is required'"
-            )
         emulation_mode = request.args.get("emulation_mode")
         emulator = _create_emulator(emulation_mode)
 
         try:
             data = emulator.normalise_request_json(request.json)
             try:
-                # bf: get query args
-                from rasa.core.interpreter import NaturalLanguageInterpreter
-                if isinstance(app.agent.interpreter, dict):
-                    parsed_data = await app.agent.interpreter.get(
-                        request.json.get("lang")).parse(
-                            data.get("text"), data.get("message_id"),
-                        )
-                elif isinstance(app.agent.interpreter, NaturalLanguageInterpreter):
-                    parsed_data = await app.agent.interpreter.parse(
-                        data.get("text"), data.get("message_id"),
-                    )
+                # bf
+                processor = app.agent.create_processor()
+                lang = request.json.get("lang")
+                if not lang: raise Exception("'lang' property is required'")
+                message = UserMessage(data.get("text"), metadata={"language": lang})
+                parsed_data = await processor._parse_message(message)
                 # bf: end
             except Exception as e:
                 logger.debug(traceback.format_exc())
