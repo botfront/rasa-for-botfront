@@ -313,7 +313,7 @@ async def test_create_fingerprint_from_invalid_paths(project, project_files):
         config_core="",
         domain=hash(Domain.empty()),
         nlg=get_dict_hash(Domain.empty().templates),
-        stories=hash(StoryGraph([])),
+        stories=0,
         nlu={}, # bf
         rasa_version=rasa.__version__,
     )

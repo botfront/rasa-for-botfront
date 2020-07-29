@@ -215,10 +215,15 @@ def get_model_subdirectories(
     core_path = os.path.join(unpacked_model_path, DEFAULT_CORE_SUBDIRECTORY_NAME)
     # bf mod
     # nlu_path = os.path.join(unpacked_model_path, "nlu")
-    nlu_models = list(filter(lambda d: d.startswith("nlu"), os.listdir(unpacked_model_path)))
+    nlu_models = list(
+        filter(lambda d: d.startswith("nlu"), os.listdir(unpacked_model_path))
+    )
 
     models_fingerprint = fingerprint_from_path(unpacked_model_path)
-    nlu_paths = {lang: None for lang in models_fingerprint.get(FINGERPRINT_CONFIG_NLU_KEY).keys()}
+    nlu_paths = {
+        lang: None
+        for lang in models_fingerprint.get(FINGERPRINT_CONFIG_NLU_KEY, {}).keys()
+    }
     try:
         for model in nlu_models:
             lang = model.split("-")[1]
@@ -307,12 +312,15 @@ async def model_fingerprint(file_importer: "TrainingDataImporter") -> Fingerprin
         FINGERPRINT_CONFIG_CORE_KEY: _get_hash_of_config(
             config, include_keys=CONFIG_MANDATORY_KEYS_CORE
         ),
-        FINGERPRINT_CONFIG_NLU_KEY: {lang: _get_hash_of_config(config, include_keys=CONFIG_MANDATORY_KEYS_NLU)
-                                        for (lang, config) in nlu_config.items()} if len(nlu_config) else '',
+        FINGERPRINT_CONFIG_NLU_KEY: {
+            lang: _get_hash_of_config(config, include_keys=CONFIG_MANDATORY_KEYS_NLU)
+            for (lang, config) in nlu_config.items()
+        }
+        if len(nlu_config)
+        else "",
         FINGERPRINT_DOMAIN_WITHOUT_NLG_KEY: hash(domain_without_nlg),
         FINGERPRINT_NLG_KEY: get_dict_hash(templates),
-        FINGERPRINT_NLU_DATA_KEY: {lang: hash(nlu_data[lang])
-                                    for lang in nlu_data},
+        FINGERPRINT_NLU_DATA_KEY: {lang: hash(nlu_data[lang]) for lang in nlu_data},
         FINGERPRINT_STORIES_KEY: stories_hash,
         FINGERPRINT_TRAINED_AT_KEY: time.time(),
         FINGERPRINT_RASA_VERSION_KEY: rasa.__version__,
@@ -373,20 +381,26 @@ def did_section_fingerprint_change(
 ) -> bool:
     """Check whether the fingerprint of a section has changed."""
     # bf mod >
-    if (section.name == "NLU model"):
-        all_languages = set(list(fingerprint1.get(FINGERPRINT_NLU_DATA_KEY).keys()) +
-                        list(fingerprint1.get(FINGERPRINT_CONFIG_NLU_KEY).keys()) +
-                        list(fingerprint2.get(FINGERPRINT_NLU_DATA_KEY).keys()) +
-                        list(fingerprint2.get(FINGERPRINT_CONFIG_NLU_KEY).keys()))
+    if section.name == "NLU model":
+        all_languages = set(
+            list(fingerprint1.get(FINGERPRINT_NLU_DATA_KEY).keys())
+            + list(fingerprint1.get(FINGERPRINT_CONFIG_NLU_KEY).keys())
+            + list(fingerprint2.get(FINGERPRINT_NLU_DATA_KEY).keys())
+            + list(fingerprint2.get(FINGERPRINT_CONFIG_NLU_KEY).keys())
+        )
 
-        languages_in_new_model = set(list(fingerprint2.get(FINGERPRINT_NLU_DATA_KEY).keys()) +
-                                    list(fingerprint2.get(FINGERPRINT_CONFIG_NLU_KEY).keys()))
-        languages_in_old_model = set(list(fingerprint1.get(FINGERPRINT_NLU_DATA_KEY).keys()) +
-                                    list(fingerprint1.get(FINGERPRINT_CONFIG_NLU_KEY).keys()))
+        languages_in_new_model = set(
+            list(fingerprint2.get(FINGERPRINT_NLU_DATA_KEY).keys())
+            + list(fingerprint2.get(FINGERPRINT_CONFIG_NLU_KEY).keys())
+        )
+        languages_in_old_model = set(
+            list(fingerprint1.get(FINGERPRINT_NLU_DATA_KEY).keys())
+            + list(fingerprint1.get(FINGERPRINT_CONFIG_NLU_KEY).keys())
+        )
         languages_added = list(languages_in_new_model - languages_in_old_model)
         languages_removed = list(languages_in_old_model - languages_in_new_model)
         languages_to_retrain = set()
-        
+
         for k in section.relevant_keys:
             if not isinstance(fingerprint1.get(k), dict):
                 if fingerprint1.get(k) != fingerprint2.get(k):

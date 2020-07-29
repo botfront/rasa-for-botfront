@@ -100,13 +100,17 @@ def nlg_request_format(
         "channel": {"name": output_channel},
     }
 
+
 class GraphQLNaturalLanguageGenerator(NaturalLanguageGenerator):
     """Like Rasa's CallbackNLG, but queries Botfront's GraphQL endpoint"""
 
     def __init__(self, **kwargs) -> None:
-        endpoint_config = kwargs.get("endpoint_config")
-        self.nlg_endpoint = endpoint_config
-        self.url_substitution_pattern = endpoint_config.kwargs.get('url_substitutions') or []
+        self.nlg_endpoint = kwargs.get("endpoint_config")
+        self.url_substitution_patterns = []
+        if self.nlg_endpoint:
+            self.url_substitution_patterns = (
+                self.nlg_endpoint.kwargs.get("url_substitutions") or []
+            )
 
     async def generate(
         self,
@@ -152,7 +156,7 @@ class GraphQLNaturalLanguageGenerator(NaturalLanguageGenerator):
                         ", ".join([e.get("message") for e in response.get("errors")])
                     )
                 response = response.get("data", {}).get("getResponse", {})
-                rewrite_url(response, self.url_substitution_pattern)
+                rewrite_url(response, self.url_substitution_patterns)
                 if "customText" in response:
                     response["text"] = response.pop("customText")
                 if "customImage" in response:
@@ -175,13 +179,17 @@ class GraphQLNaturalLanguageGenerator(NaturalLanguageGenerator):
                 response = response[0]  # legacy route, use first message in seq
         except urllib.error.URLError as e:
             message = e.reason
-            logger.error(f"NLG web endpoint at {self.nlg_endpoint.url} returned errors: {message}")
+            logger.error(
+                f"NLG web endpoint at {self.nlg_endpoint.url} returned errors: {message}"
+            )
             return {"text": template_name}
 
         if self.validate_response(response):
             return response
         else:
-            logger.error(f"NLG web endpoint at {self.nlg_endpoint.url} returned an invalid response.")
+            logger.error(
+                f"NLG web endpoint at {self.nlg_endpoint.url} returned an invalid response."
+            )
             return {"text": template_name}
 
     @staticmethod

@@ -14,8 +14,12 @@ logger = logging.getLogger(__name__)
 class BotfrontTemplatedNaturalLanguageGenerator(NaturalLanguageGenerator):
     def __init__(self, **kwargs) -> None:
         domain = kwargs.get("domain")
-        templated_endpoint = kwargs.get("endpoint_config")
-        self.url_substitution_pattern = templated_endpoint.kwargs.get('url_substitutions') or []
+        self.url_substitution_patterns = []
+        endpoint_config = kwargs.get("endpoint_config")
+        if endpoint_config:
+            self.url_substitution_patterns = (
+                endpoint_config.kwargs.get("url_substitutions") or []
+            )
         self.templates = domain.templates if domain else []
 
     def _templates_for_utter_action(self, utter_action, output_channel, **kwargs):
@@ -76,7 +80,8 @@ class BotfrontTemplatedNaturalLanguageGenerator(NaturalLanguageGenerator):
             fallback_language_slot.initial_value if fallback_language_slot else None
         )
         language = tracker.latest_message.metadata.get("language") or fallback_language
-        if "fallback_language" in kwargs: del kwargs["fallback_language"]
+        if "fallback_language" in kwargs:
+            del kwargs["fallback_language"]
 
         message = self.generate_from_slots(
             template_name,
@@ -86,13 +91,14 @@ class BotfrontTemplatedNaturalLanguageGenerator(NaturalLanguageGenerator):
             language=language,
             fallback_language=fallback_language,
         )
-        if "language" in message: del message["language"]
-        rewrite_url(message, self.url_substitution_pattern)
+        if "language" in message:
+            del message["language"]
+        rewrite_url(message, self.url_substitution_patterns)
         metadata = message.pop("metadata", {}) or {}
-        for key in metadata: message[key] = metadata[key]
+        for key in metadata:
+            message[key] = metadata[key]
 
         return message
-
 
     def generate_from_slots(
         self,

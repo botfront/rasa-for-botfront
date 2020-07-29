@@ -76,7 +76,9 @@ class BotfrontFileImporter(TrainingDataImporter):
     async def get_stories_hash(self):
         # Use a file hash of stories file to figure out Core fingerprint, instead of
         # storygraph object hash which is unstable
-        return get_file_hash(self._story_files[0])
+        if len(self._story_files):
+            return get_file_hash(self._story_files[0])
+        else: return 0
 
     async def get_nlu_data(self, languages=True) -> Dict[Text, TrainingData]:
         language = None
