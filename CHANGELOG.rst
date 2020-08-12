@@ -16,6 +16,16 @@ Improvements
 [1.10.3-bf.3] - 2020-07-22
 ^^^^^^^^^^^^^^^^^^^^^
 
+Improvements
+--------
+- `2210d2e <https://github.com/botfront/rasa-for-botfront/commit/2210d2e8db38a47991f7f202da6c01df2b4edf27>`_: Use full rasa installation in Dockerfile (use flag `--extras full`)
+- `1227e21 <https://github.com/botfront/rasa-for-botfront/commit/1227e2171eabeed7818639318a2e4cca348ffc31>`_: Allow instance to boot regardless of exceptions incurred during initial model loading.
+- `6e728d7 <https://github.com/botfront/rasa-for-botfront/commit/6e728d74b92dd0bd98fae63bd6d3e4e989b80c66>`_: Move multilingual interpreter logic to ensemble interpreter class.
+
+
+[1.10.3-bf.3] - 2020-07-22
+^^^^^^^^^^^^^^^^^^^^^
+
 Features
 --------
 - `d16e75f <https://github.com/botfront/rasa-for-botfront/commit/d16e75fc1b4461bcdc1168ea7a16bf322f977ca7>`_: Support for image url text replacements in BotfrontTemplatedNaturalLanguageGenerator and GraphQLNaturalLanguageGenerator.
