@@ -461,7 +461,8 @@ class BotUttered(Event):
         m = self.data.copy()
         m["text"] = self.text
         m["timestamp"] = self.timestamp
-        m.update(self.metadata)
+        m["metadata"] = self.metadata # bf mod: pass metadata in bot message
+        # m.update(self.metadata) # bf mod
 
         if m.get("image") == m.get("attachment"):
             # we need this as there is an oddity we introduced a while ago where

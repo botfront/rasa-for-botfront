@@ -133,6 +133,7 @@ def action_for_name(
         domain.user_actions_and_forms,
         should_use_form_action,
         domain.retrieval_intents,
+        domain=domain,
     )
 
 
@@ -162,8 +163,17 @@ def action_from_name(
     user_actions: List[Text],
     should_use_form_action: bool = False,
     retrieval_intents: Optional[List[Text]] = None,
+    domain: Optional[Domain] = None,
 ) -> "Action":
     """Return an action instance for the name."""
+
+    # bf
+    bf_forms = []
+    if domain:
+        for slot in domain.slots or []:
+            if slot.name == "bf_forms": bf_forms = slot.initial_value
+        bf_forms = [f.get("name") for f in bf_forms]
+    # /bf
 
     defaults = {a.name(): a for a in default_actions(action_endpoint)}
 
@@ -175,6 +185,12 @@ def action_from_name(
         return ActionRetrieveResponse(name)
     elif name.startswith(UTTER_PREFIX):
         return ActionUtterTemplate(name)
+    # bf >
+    elif name.endswith("_form") and any(form.get("name") == name for form in bf_forms):
+        return generate_bf_form_action(name)
+    elif name in actions_bf:
+        return actions_bf[name]
+    # </ bf
     elif should_use_form_action:
         from rasa.core.actions.forms import FormAction
 
@@ -805,3 +821,11 @@ class ActionDefaultAskRephrase(ActionUtterTemplate):
 
     def __init__(self) -> None:
         super().__init__("utter_ask_rephrase", silent_fail=True)
+
+
+import sys  # avoid circular imports when testing addons
+
+if not hasattr(sys, "_called_from_rasa_addons_test"):
+    from rasa_addons.core.actions import actions_bf, generate_bf_form_action  # bf
+else:
+    actions_bf = {}

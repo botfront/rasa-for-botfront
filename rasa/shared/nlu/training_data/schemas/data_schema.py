@@ -57,6 +57,17 @@ def rasa_nlu_data_schema() -> Dict[Text, Any]:
             },
         },
     }
+    
+    gazette_schema = { # bf
+        "type": "object",
+        "properties": {
+            "value": {"type": "string"},
+            "gazette": {
+                "type": "array",
+                "items": {"type": "string"},
+            }
+        }
+    }
 
     return {
         "type": "object",
@@ -78,6 +89,7 @@ def rasa_nlu_data_schema() -> Dict[Text, Any]:
                         "items": training_example_schema,
                     },
                     "lookup_tables": {"type": "array", "items": lookup_table_schema},
+                    "gazette": {"type": "array", "items": gazette_schema}, # bf
                 },
             }
         },

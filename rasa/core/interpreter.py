@@ -29,6 +29,11 @@ def create_interpreter(
 
     if isinstance(obj, rasa.shared.nlu.interpreter.NaturalLanguageInterpreter):
         return obj
+    # bf>
+    elif isinstance(obj, dict):
+        from rasa_addons.core.interpreter import MultilingualNLUInterpreter
+        return MultilingualNLUInterpreter(model_directory=obj)
+    # </bf
     elif isinstance(obj, str) and os.path.exists(obj):
         return RasaNLUInterpreter(model_directory=obj)
     elif isinstance(obj, str):
@@ -39,7 +44,6 @@ def create_interpreter(
         return rasa.shared.nlu.interpreter.RegexInterpreter()
     else:
         return _create_from_endpoint_config(obj)
-
 
 class RasaNLUHttpInterpreter(rasa.shared.nlu.interpreter.NaturalLanguageInterpreter):
     def __init__(self, endpoint_config: Optional[EndpointConfig] = None) -> None:

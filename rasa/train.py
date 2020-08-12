@@ -58,7 +58,7 @@ def train(
 
 async def train_async(
     domain: Union[Domain, Text],
-    config: Text,
+    config: Dict[Text, Text],
     training_files: Optional[Union[Text, List[Text]]],
     output_path: Text = DEFAULT_MODELS_PATH,
     force_training: bool = False,
@@ -71,7 +71,7 @@ async def train_async(
 
     Args:
         domain: Path to the domain file.
-        config: Path to the config for Core and NLU.
+        config: Dict of paths to the config for Core and NLU. Keys are language codes
         training_files: Paths to the training data for Core and NLU.
         output_path: Output path.
         force_training: If `True` retrain model even if data has not changed.
@@ -86,18 +86,24 @@ async def train_async(
         Path of the trained model archive.
     """
 
-    file_importer = TrainingDataImporter.load_from_config(
-        config, domain, training_files
-    )
+    # file_importer = TrainingDataImporter.load_from_config(
+    #    config, domain, training_files
+    # )
+
     with ExitStack() as stack:
         train_path = stack.enter_context(TempDirectoryPath(tempfile.mkdtemp()))
 
-        domain = await file_importer.get_domain()
+        # bf mod
+        from rasa_addons.importers import BotfrontFileImporter
 
-        if domain.is_empty():
-            return await handle_domain_if_not_exists(
-                file_importer, output_path, fixed_model_name
-            )
+        file_importer = BotfrontFileImporter(config, domain, training_files)
+        # domain = await file_importer.get_domain()
+
+        # if domain.is_empty():
+        #     return await handle_domain_if_not_exists(
+        #         file_importer, output_path, fixed_model_name
+        #     )
+        # /bf mod
 
         return await _train_async_internal(
             file_importer,
@@ -157,31 +163,31 @@ async def _train_async_internal(
         file_importer.get_stories(), file_importer.get_nlu_data()
     )
 
-    if stories.is_empty() and nlu_data.is_empty():
-        print_error(
-            "No training data given. Please provide stories and NLU data in "
-            "order to train a Rasa model using the '--data' argument."
-        )
-        return
+    # if stories.is_empty() and nlu_data.is_empty():
+    #     print_error(
+    #         "No training data given. Please provide stories and NLU data in "
+    #         "order to train a Rasa model using the '--data' argument."
+    #     )
+    #     return
 
-    if stories.is_empty():
-        print_warning("No stories present. Just a Rasa NLU model will be trained.")
-        return await _train_nlu_with_validated_data(
-            file_importer,
-            output=output_path,
-            fixed_model_name=fixed_model_name,
-            persist_nlu_training_data=persist_nlu_training_data,
-            additional_arguments=nlu_additional_arguments,
-        )
+    # if stories.is_empty():
+    #     print_warning("No stories present. Just a Rasa NLU model will be trained.")
+    #     return await _train_nlu_with_validated_data(
+    #         file_importer,
+    #         output=output_path,
+    #         fixed_model_name=fixed_model_name,
+    #         persist_nlu_training_data=persist_nlu_training_data,
+    #         additional_arguments=nlu_additional_arguments,
+    #     )
 
-    if nlu_data.is_empty():
-        print_warning("No NLU data present. Just a Rasa Core model will be trained.")
-        return await _train_core_with_validated_data(
-            file_importer,
-            output=output_path,
-            fixed_model_name=fixed_model_name,
-            additional_arguments=core_additional_arguments,
-        )
+    # if nlu_data.is_empty():
+    #     print_warning("No NLU data present. Just a Rasa Core model will be trained.")
+    #     return await _train_core_with_validated_data(
+    #         file_importer,
+    #         output=output_path,
+    #         fixed_model_name=fixed_model_name,
+    #         additional_arguments=core_additional_arguments,
+    #     )
 
     new_fingerprint = await model.model_fingerprint(file_importer)
     old_model = model.get_latest_model(output_path)
@@ -192,6 +198,29 @@ async def _train_async_internal(
         )
     else:
         fingerprint_comparison = FingerprintComparisonResult(force_training=True)
+
+    # bf mod >
+    if fingerprint_comparison.nlu == True:  # replace True with list of all langs
+        fingerprint_comparison.nlu = list(new_fingerprint.get("nlu-config", {}).keys())
+    domain = await file_importer.get_domain()
+    core_untrainable = domain.is_empty() or stories.is_empty()
+    nlu_untrainable = [l for l, d in nlu_data.items() if d.is_empty()]
+    fingerprint_comparison.core = fingerprint_comparison.core and not core_untrainable
+    fingerprint_comparison.nlu = [
+        l for l in fingerprint_comparison.nlu if l not in nlu_untrainable
+    ]
+
+    if core_untrainable:
+        print_color(
+            "Skipping Core training since domain or stories are empty.",
+            color=rasa.shared.utils.io.bcolors.OKBLUE,
+        )
+    for lang in nlu_untrainable:
+        print_color(
+            "No NLU data found for language <{}>, skipping training...".format(lang),
+            color=rasa.shared.utils.io.bcolors.OKBLUE,
+        )
+    # </ bf mod
 
     if fingerprint_comparison.is_training_required():
         async with telemetry.track_model_training(file_importer, model_type="rasa"):
@@ -242,6 +271,7 @@ async def _do_training(
             output=output_path,
             train_path=train_path,
             fixed_model_name=fixed_model_name,
+            retrain_nlu=fingerprint_comparison_result.nlu,
             persist_nlu_training_data=persist_nlu_training_data,
             additional_arguments=nlu_additional_arguments,
         )
@@ -515,6 +545,7 @@ async def _train_nlu_with_validated_data(
     train_path: Optional[Text] = None,
     fixed_model_name: Optional[Text] = None,
     persist_nlu_training_data: bool = False,
+    retrain_nlu: Union[bool, List[Text]] = True,
     additional_arguments: Optional[Dict] = None,
 ) -> Optional[Text]:
     """Train NLU with validated training and config data."""
@@ -531,17 +562,31 @@ async def _train_nlu_with_validated_data(
         else:
             # Otherwise, create a temp train path and clean it up on exit.
             _train_path = stack.enter_context(TempDirectoryPath(tempfile.mkdtemp()))
-        config = await file_importer.get_config()
-        print_color("Training NLU model...", color=rasa.shared.utils.io.bcolors.OKBLUE)
+        # bf mod
+        config = await file_importer.get_nlu_config(retrain_nlu)
         async with telemetry.track_model_training(file_importer, model_type="nlu"):
-            await rasa.nlu.train(
-                config,
-                file_importer,
-                _train_path,
-                fixed_model_name="nlu",
-                persist_nlu_training_data=persist_nlu_training_data,
-                **additional_arguments,
-            )
+            for lang in config:
+                if config[lang]:
+                    print_color(
+                        "Start training {} NLU model ...".format(lang),
+                        color=rasa.shared.utils.io.bcolors.OKBLUE,
+                    )
+                    await rasa.nlu.train(
+                        config[lang],
+                        file_importer,
+                        _train_path,
+                        fixed_model_name="nlu-{}".format(lang),
+                        persist_nlu_training_data=persist_nlu_training_data,
+                        **additional_arguments,
+                    )
+                else:
+                    print_color(
+                        "NLU data for language <{}> didn't change, skipping training...".format(
+                            lang
+                        ),
+                        color=rasa.shared.utils.io.bcolors.OKBLUE,
+                    )
+        # /bf mod
         print_color(
             "NLU model training completed.", color=rasa.shared.utils.io.bcolors.OKBLUE
         )

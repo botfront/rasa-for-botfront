@@ -75,3 +75,6 @@ DEFAULT_KNOWLEDGE_BASE_ACTION = "action_query_knowledge_base"
 # represent the origin of a `SubState`
 USER = "user"
 SLOTS = "slots"
+
+from rasa_addons.core.action_list import action_list # bf
+DEFAULT_ACTION_NAMES += action_list # bf
