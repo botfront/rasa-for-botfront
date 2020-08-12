@@ -83,7 +83,7 @@ class ActionBotfrontFallback(ActionUtterTemplate):
         return "action_botfront_fallback"
 
     def __init__(self):
-        super(ActionBotfrontFallback, self).__init__("utter_fallback", silent_fail=True)
+        super(ActionBotfrontFallback, self).__init__("utter_default", silent_fail=True)
 
     async def run(self, output_channel, nlg, tracker, domain):
 

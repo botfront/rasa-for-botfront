@@ -48,7 +48,7 @@ This NLU component enriches the ``intent_ranking`` key of user messages in the t
 
 ##### fallback_trigger
 
-Float (default ``0.30``): if confidence of top-ranking intent is below this threshold, fallback is triggered. Fallback is an action that utters the template ``utter_fallback`` and returns to the previous conversation state.
+Float (default ``0.30``): if confidence of top-ranking intent is below this threshold, fallback is triggered. Fallback is an action that utters the template ``utter_default`` and returns to the previous conversation state.
 
 ##### disambiguation_trigger
 
