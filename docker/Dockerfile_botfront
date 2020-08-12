@@ -40,7 +40,7 @@ WORKDIR /build
 RUN python -m venv /opt/venv && \
   . /opt/venv/bin/activate && \
   pip install --no-cache-dir -U 'pip<20' && \
-  poetry install --extras transformers --no-dev --no-root --no-interaction && \
+  poetry install --extras full --no-dev --no-root --no-interaction && \
   poetry build -f wheel -n && \
   python addons_setup.py bdist_wheel -d dist && \
   pip wheel -r addons_requirements.txt -w dist && \
