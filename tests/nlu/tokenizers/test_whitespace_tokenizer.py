@@ -1,8 +1,9 @@
 import pytest
 
+from rasa.nlu.components import UnsupportedLanguageError
+from rasa.nlu.config import RasaNLUModelConfig
 from rasa.nlu.constants import TOKENS_NAMES, TEXT, INTENT
 from rasa.nlu.training_data import TrainingData, Message
-from tests.nlu import utilities
 from rasa.nlu.tokenizers.whitespace_tokenizer import WhitespaceTokenizer
 
 
@@ -20,6 +21,37 @@ from rasa.nlu.tokenizers.whitespace_tokenizer import WhitespaceTokenizer
             [(0, 3), (4, 12), (13, 16), (17, 19), (20, 23)],
         ),
         (
+            "50 क्या आपके पास डेरी मिल्क 10 वाले बॉक्स मिल सकते है",
+            [
+                "50",
+                "क्या",
+                "आपके",
+                "पास",
+                "डेरी",
+                "मिल्क",
+                "10",
+                "वाले",
+                "बॉक्स",
+                "मिल",
+                "सकते",
+                "है",
+            ],
+            [
+                (0, 2),
+                (3, 7),
+                (8, 12),
+                (13, 16),
+                (17, 21),
+                (22, 27),
+                (28, 30),
+                (31, 35),
+                (36, 41),
+                (42, 45),
+                (46, 50),
+                (51, 53),
+            ],
+        ),
+        (
             "https://www.google.com/search?client=safari&rls=en&q=i+like+rasa&ie=UTF-8&oe=UTF-8 https://rasa.com/docs/nlu/components/#tokenizer-whitespace",
             [
                 "https://www.google.com/search?"
@@ -28,6 +60,14 @@ from rasa.nlu.tokenizers.whitespace_tokenizer import WhitespaceTokenizer
             ],
             [(0, 82), (83, 141)],
         ),
+        (
+            "Joselico gracias Dois 🙏🇺🇸🏦🛠🔥⭐️🦅👑💪",
+            ["Joselico", "gracias", "Dois"],
+            [(0, 8), (9, 16), (17, 21)],
+        ),
+        (":)", [":)"], [(0, 2)]),
+        ("Hi :-)", ["Hi"], [(0, 2)]),
+        ("👍", ["👍"], [(0, 1)]),
     ],
 )
 def test_whitespace(text, expected_tokens, expected_indices):
@@ -115,3 +155,27 @@ def test_whitespace_training(supervised_embeddings_config):
     assert examples[1].data.get("tokens")[0].text == "i"
     assert examples[1].data.get("tokens")[1].text == "want"
     assert examples[1].data.get("tokens")[2].text == "tacos"
+
+
+def test_whitespace_does_not_throw_error():
+    import rasa.utils.io as io_utils
+
+    texts = io_utils.read_json_file("data/test_tokenizers/naughty_strings.json")
+
+    tk = WhitespaceTokenizer()
+
+    for text in texts:
+        tk.tokenize(Message(text), attribute=TEXT)
+
+
+@pytest.mark.parametrize("language, error", [("en", False), ("zh", True)])
+def test_whitespace_language_suuport(language, error, component_builder):
+    config = RasaNLUModelConfig(
+        {"language": language, "pipeline": [{"name": "WhitespaceTokenizer"}]}
+    )
+
+    if error:
+        with pytest.raises(UnsupportedLanguageError):
+            component_builder.create_component({"name": "WhitespaceTokenizer"}, config)
+    else:
+        component_builder.create_component({"name": "WhitespaceTokenizer"}, config)

@@ -481,7 +481,7 @@ which will do something with the information the user has provided once the form
        return []
 
 In this case, we only tell the user that we’ll be in touch with them, however
-usually you would send this information to an API or a database. See the `rasa-demo <https://github.com/RasaHQ/rasa-demo/blob/master/demo/actions.py#L69>`_
+usually you would send this information to an API or a database. See the `rasa-demo <https://github.com/RasaHQ/rasa-demo/blob/master/actions/actions.py#L71>`_
 for an example of how to store this information in a spreadsheet.
 
 We’ll need to add the form we just created to a new section in our ``domain.yml`` file:
@@ -658,17 +658,22 @@ should be handled by writing regular stories, so your model can learn this behav
 
       - ``actions.py``: Define the form action, including the ``required_slots``, ``slot_mappings`` and ``submit`` methods
       - ``data/nlu.md``:
+
           - Add examples for an intent to activate the form
           - Add examples for an ``inform`` intent to fill the form
       - ``domain.yml``:
+
           - Add all slots required by the form
           - Add ``utter_ask_{slot}`` responses for all required slots
           - Add your form action to the ``forms`` section
           - Add all intents and entities from your NLU training data
+
       - ``data/stories.md``: Add a story for the form
       - ``config.yml``:
+
           - Add the ``FormPolicy`` to your policies
           - Add entity extractors to your pipeline
+
       - ``endpoints.yml``: Define the ``action_endpoint``
 
 
@@ -686,7 +691,8 @@ The decision to handle these types of user input should always come from reviewi
 real conversations. You should first build part of your assistant, test it with real users
 (whether that's your end user, or your colleague) and then add what's missing. You shouldn't
 try to implement every possible edge case that you think might happen, because in the end
-your users may never actually behave in that way. `Rasa X <https://rasa.com/docs/rasa-x/installation-and-setup/docker-compose-script/>`__
+your users may never actually behave in that way.
+`Rasa X <https://rasa.com/docs/rasa-x/>`__
 is a tool that can help you review conversations and make these types of decisions.
 
 Generic interjections
@@ -894,11 +900,14 @@ Don’t forget to add a few end to end stories to your ``test_stories.md`` for t
       - ``actions.py``: Define ``action_greet``
       - ``data/nlu.md``: Add training data for an ``explain`` intent
       - ``domain.yml``:
+
           - Map intent ``greet`` to  ``action_greet_user``
-          - Make ``requested_slot`` a categorical slots with all required slots as values
+          - Make ``requested_slot`` a categorical slot with all required slots as values
           - Add the ``explain`` intent
           - Add responses for contextual question interruptions
+
       - ``data/stories.md``:
+
           - Remove stories using mapped intents if you have them
           - Add stories with FAQ & contextual interruptions in the middle of filling a form
 
@@ -946,7 +955,7 @@ There are also a bunch of ways in which you can customise this policy. In Sara, 
 we’ve customized it to suggest intents to the user within a certain confidence range to make
 it easier for the user to give the bot the information it needs.
 
-This is done by customizing the action ``ActionDefaultAskAffirmation`` as shown in the `Sara rasa-demo action server <https://github.com/RasaHQ/rasa-demo/blob/master/demo/actions.py#L443>`_
+This is done by customizing the action ``ActionDefaultAskAffirmation`` as shown in the `Sara rasa-demo action server <https://github.com/RasaHQ/rasa-demo/blob/master/actions/actions.py#L424>`_
 We define some intent mappings to make it more intuitive to the user what an intent means.
 
 .. image:: /_static/images/intent_mappings.png
@@ -1007,15 +1016,24 @@ let’s say the user asks "I want to apply for a job at Rasa", we can then reply
     Here's a minimal checklist of files we modified to help our assistant fail gracefully:
 
       - ``data/nlu.md``:
+
           - Add training data for the ``out_of_scope`` intent & any specific out of scope intents that you want to handle seperately
+
       - ``data/stories.md``:
+
           - Add stories for any specific out of scope intents
+
       - ``domain.yml``:
+
           - Add the ``out_of_scope`` intent & any specific out of scope intents
           - Add an ``utter_out_of_scope`` response & responses for any specific out of scope intents
+
       - ``actions.py``:
+
           - Customise ``ActionDefaultAskAffirmation`` to suggest intents for the user to choose from
+
       - ``config.yml``:
+
           - Add the TwoStageFallbackPolicy to the ``policies`` section
 
 
