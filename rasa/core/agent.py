@@ -430,11 +430,7 @@ class Agent:
             ensemble = PolicyEnsemble.load(core_model) if core_model else None
 
             # ensures the domain hasn't changed between test and train
-            try:
-                domain.compare_with_specification(core_model)
-            except rasa.core.domain.InvalidDomain as e:
-                logger.warning(e.message)
-                domain = None
+            domain.compare_with_specification(core_model)
 
         return cls(
             domain=domain,

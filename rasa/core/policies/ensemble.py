@@ -247,11 +247,7 @@ class PolicyEnsemble:
         """Loads policy and domain specification from storage"""
 
         metadata = cls.load_metadata(path)
-        try:
-            cls.ensure_model_compatibility(metadata)
-        except UnsupportedDialogueModelError as e:
-            logger.warning(e.message)
-            return None
+        cls.ensure_model_compatibility(metadata)
         policies = []
         for i, policy_name in enumerate(metadata["policy_names"]):
             policy_cls = registry.policy_from_module_path(policy_name)
@@ -310,6 +306,7 @@ class PolicyEnsemble:
 
             try:
                 constr_func = registry.policy_from_module_path(policy_name)
+                if constr_func is None: continue # bf
                 try:
                     policy_object = constr_func(**policy)
                 except TypeError as e:
