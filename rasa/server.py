@@ -76,7 +76,7 @@ class ErrorResponse(Exception):
             "code": status,
         }
         self.status = status
-        logger.error(message) # bf
+        logger.error(message)  # bf
 
 
 def _docs(sub_url: Text) -> Text:
@@ -383,7 +383,7 @@ def add_root_route(app: Sanic):
     @app.get("/")
     async def hello(request: Request):
         """Check if the server is running and responds with the version."""
-        return response.text("Hello from Rasa: " + rasa.__version_bf__) # bf
+        return response.text("Hello from Rasa: " + rasa.__version_bf__)  # bf
 
 
 def create_app(
@@ -432,7 +432,7 @@ def create_app(
 
         return response.json(
             {
-                "version": rasa.__version_bf__, # bf
+                "version": rasa.__version_bf__,  # bf
                 "minimum_compatible_version": MINIMUM_COMPATIBLE_VERSION,
             }
         )
@@ -492,14 +492,16 @@ def create_app(
             async with app.agent.lock_store.lock(conversation_id):
                 processor = app.agent.create_processor()
                 tracker = processor.get_tracker(conversation_id)
-                output_channel = _get_output_channel(request, tracker) # bf
+                output_channel = _get_output_channel(request, tracker)  # bf
                 _validate_tracker(tracker, conversation_id)
 
                 events = _get_events_from_request_body(request)
 
                 for event in events:
                     tracker.update(event, app.agent.domain)
-                await processor._send_bot_messages(events, tracker, output_channel) # bf
+                await processor._send_bot_messages(
+                    events, tracker, output_channel
+                )  # bf
                 app.agent.tracker_store.save(tracker)
 
             return response.json(tracker.current_state(verbosity))
@@ -778,7 +780,7 @@ def create_app(
             for key in rjs["nlu"].keys():
                 nlu_path = os.path.join(nlu_dir, "{}.md".format(key))
                 rasa.utils.io.write_text_file(rjs["nlu"][key]["data"], nlu_path)
-        
+
         # << bf
 
         if "stories" in rjs:
@@ -805,15 +807,17 @@ def create_app(
 
             info = dict(
                 domain=domain_path,
-                config=config_paths, # bf
+                config=config_paths,  # bf
                 training_files=temp_dir,
                 output=model_output_directory,
                 force_training=rjs.get("force", False),
-                fixed_model_name=rjs.get("fixed_model_name"), # bf
-                persist_nlu_training_data=True, # bf
+                fixed_model_name=rjs.get("fixed_model_name"),  # bf
+                persist_nlu_training_data=True,  # bf
                 additional_arguments={
-                    "augmentation_factor": int(os.environ.get("AUGMENTATION_FACTOR", 50)),
-                } # bf
+                    "augmentation_factor": int(
+                        os.environ.get("AUGMENTATION_FACTOR", 50)
+                    ),
+                },  # bf
             )
 
             loop = asyncio.get_event_loop()
@@ -932,8 +936,25 @@ def create_app(
         _, nlu_model = model.get_model_subdirectories(model_directory)
 
         try:
-            language = request.args.get("language", None) # bf
-            evaluation = run_evaluation(data_path, nlu_model.get(language)) # bf
+            # bf >
+            language = request.args.get("language", None)
+            evaluation = run_evaluation(
+                data_path,
+                nlu_model.get(language),
+                errors=True,
+                output_directory=model_directory,
+            )
+
+            for classifier in evaluation.get("entity_evaluation", {}):
+                entity_errors_file = os.path.join(
+                    model_directory, f"{classifier}_errors.json"
+                )
+                if os.path.isfile(entity_errors_file):
+                    import json
+
+                    entity_errors = json.loads(rasa.utils.io.read_file(entity_errors_file))
+                    evaluation["entity_evaluation"][classifier]["predictions"] = entity_errors
+            # </ bf
             return response.json(evaluation)
         except Exception as e:
             logger.debug(traceback.format_exc())
@@ -1012,7 +1033,8 @@ def create_app(
                 # bf
                 processor = app.agent.create_processor()
                 lang = request.json.get("lang")
-                if not lang: raise Exception("'lang' property is required'")
+                if not lang:
+                    raise Exception("'lang' property is required'")
                 message = UserMessage(data.get("text"), metadata={"language": lang})
                 parsed_data = await processor._parse_message(message)
                 # bf: end
@@ -1107,11 +1129,17 @@ def create_app(
         )
         rjs = request.json
 
-        if 'data' not in rjs:
-            raise ErrorResponse(400, "BadRequest", "Must provide training data in 'data' property")
-        if 'output_format' not in rjs or rjs["output_format"] not in ["json", "md"]:
-            raise ErrorResponse(400, "BadRequest", "'output_format' is required and must be either 'md' or 'json")
-        if 'language' not in rjs:
+        if "data" not in rjs:
+            raise ErrorResponse(
+                400, "BadRequest", "Must provide training data in 'data' property"
+            )
+        if "output_format" not in rjs or rjs["output_format"] not in ["json", "md"]:
+            raise ErrorResponse(
+                400,
+                "BadRequest",
+                "'output_format' is required and must be either 'md' or 'json",
+            )
+        if "language" not in rjs:
             raise ErrorResponse(400, "BadRequest", "'language' is required")
 
         temp_dir = tempfile.mkdtemp()
@@ -1126,14 +1154,18 @@ def create_app(
             rasa.utils.io.write_text_file(rjs["data"], nlu_data_path)
 
         from rasa.nlu.convert import convert_training_data
-        convert_training_data(nlu_data_path, output_path, rjs["output_format"], rjs["language"])
 
-        with open(output_path, encoding='utf-8') as f:
+        convert_training_data(
+            nlu_data_path, output_path, rjs["output_format"], rjs["language"]
+        )
+
+        with open(output_path, encoding="utf-8") as f:
             data = f.read()
 
-        if rjs["output_format"] == 'json':
+        if rjs["output_format"] == "json":
             import json
-            data = json.loads(data, encoding='utf-8')
+
+            data = json.loads(data, encoding="utf-8")
 
         return response.json({"data": data})
 
