@@ -531,6 +531,7 @@ class SimplePolicyEnsemble(PolicyEnsemble):
             and probabilities.index(max(probabilities))
             == domain.index_for_action(ACTION_LISTEN_NAME)
             and self.is_not_memo_policy(policy_name, max(probabilities))
+            and "HandoffPolicy" not in policy_name # bf, needed since HandoffPolicy does precisely this
         ):
             probabilities, policy_name = self._fallback_after_listen(
                 domain, probabilities, policy_name
