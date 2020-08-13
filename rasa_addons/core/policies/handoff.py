@@ -4,8 +4,8 @@ import time
 import asyncio
 import os
 import copy
-from typing import Any, List, Text, Dict, Optional
-from rasa.core.events import SlotSet
+from typing import Any, List, Text, Dict
+from rasa.core.events import UserUttered, UserUtteranceReverted
 
 import rasa.utils.io
 
@@ -37,7 +37,7 @@ class BotfrontHandoffPolicy(Policy):
 
     defaults = {
         "service": "slack",
-        "triggers": ["handoff"],
+        "triggers": ["botfront_handoff"],
         "realm": None,
         "room_prefix": "support_",
         "timeout": 60 * 2,  # seconds before hanging up
@@ -131,8 +131,16 @@ class BotfrontHandoffPolicy(Policy):
         sender_id = tracker.sender_id
         user_id = (tracker.latest_message.metadata or {}).get("userId")
 
-        handoff = tracker.get_slot("handoff_info") or {}
+        handoff = tracker.get_slot("botfront_handoff_info") or {}
         handoff_active = handoff.get("active", False)
+
+        rewind_occured_before_user_spoke = False
+        for e in reversed(tracker.events):
+            if isinstance(e, UserUtteranceReverted):
+                rewind_occured_before_user_spoke = True; break
+            if isinstance(e, UserUttered): break
+        if rewind_occured_before_user_spoke:
+            return prediction # don't activate as a result of a rewind
 
         if (
             handoff_active is True
@@ -151,7 +159,7 @@ class BotfrontHandoffPolicy(Policy):
                 event = e.as_dict()
                 if (
                     event.get("event") == "slot"
-                    and event.get("name") == "handoff_info"
+                    and event.get("name") == "botfront_handoff_info"
                     and event.get("value", {}).get("active") is False
                 ):
                     break
