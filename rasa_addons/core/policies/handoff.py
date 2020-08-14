@@ -37,12 +37,16 @@ class BotfrontHandoffPolicy(Policy):
 
     defaults = {
         "service": "slack",
-        "triggers": ["botfront_handoff"],
         "realm": None,
         "room_prefix": "support_",
-        "timeout": 60 * 2,  # seconds before hanging up
+        "triggers": ["botfront_handoff"],
+        "on_unanswered_handoff_deactivation": None,
+        "on_answered_handoff_deactivation": None,
+        "on_explicit_handoff_deactivation": None,
         "first_responders": [],
         "announcement_room": None,
+        "timeout": 60 * 2,  # seconds before hanging up
+        "timeout_unanswered": 60,  # seconds before hanging up w/o first contact
     }
 
     def __init__(self, priority: int = 10, **kwargs: Any) -> None:
@@ -65,8 +69,13 @@ class BotfrontHandoffPolicy(Policy):
             "realm": self.realm,
             "room_prefix": self.room_prefix,
             "triggers": self.triggers,
+            "on_unanswered_handoff_deactivation": self.on_unanswered_handoff_deactivation,
+            "on_answered_handoff_deactivation": self.on_answered_handoff_deactivation,
+            "on_explicit_handoff_deactivation": self.on_explicit_handoff_deactivation,
             "first_responders": self.first_responders,
             "announcement_room": self.announcement_room,
+            "timeout": self.timeout,
+            "timeout_unanswered": self.timeout_unanswered,
             "rasa_url": os.environ.get("RASA_URL"),
             "project_id": os.environ.get("BF_PROJECT_ID"),
         }
@@ -74,16 +83,17 @@ class BotfrontHandoffPolicy(Policy):
     def _load_params(self, **kwargs: Dict[Text, Any]) -> None:
         config = copy.deepcopy(self.defaults)
         config.update(kwargs)
-        service = config.pop("service", None)
-        realm = config.pop("realm", None)
-        triggers = config.pop("triggers", [])
-        room_prefix = config.pop("room_prefix", None)
-        first_responders = config.pop("first_responders", [])
-        announcement_room = config.pop("announcement_room", None)
+        service = config.get("service")
+        realm = config.get("realm")
+        room_prefix = config.get("room_prefix")
+        triggers = config.get("triggers")
+        first_responders = config.get("first_responders")
+        announcement_room = config.get("announcement_room")
         try:
-            self.timeout = float(config.pop("timeout", 0))
-        except ValueError:
-            raise Exception("Timeout must be a numerical value.")
+            self.timeout = float(config.pop("timeout", None))
+            self.timeout_unanswered = float(config.pop("timeout_unanswered", None))
+        except (ValueError, TypeError):
+            raise Exception("Timeouts must be numerical values.")
         if service not in SUPPORTED_SERVICES:
             raise Exception("Handoff service not supported.")
         if realm is None:
@@ -100,11 +110,20 @@ class BotfrontHandoffPolicy(Policy):
             raise Exception("Invalid list of first responders.")
         self.service = service
         self.realm = realm
-        self.triggers = triggers
         self.room_prefix = room_prefix
+        self.triggers = triggers
+        self.on_unanswered_handoff_deactivation = config.get(
+            "on_unanswered_handoff_deactivation"
+        )
+        self.on_answered_handoff_deactivation = config.get(
+            "on_answered_handoff_deactivation"
+        )
+        self.on_explicit_handoff_deactivation = config.get(
+            "on_explicit_handoff_deactivation"
+        )
         self.first_responders = first_responders
-        self.active_handoffs = {}
         self.announcement_room = announcement_room
+        self.active_handoffs = {}
 
     def train(
         self,
@@ -137,21 +156,26 @@ class BotfrontHandoffPolicy(Policy):
         rewind_occured_before_user_spoke = False
         for e in reversed(tracker.events):
             if isinstance(e, UserUtteranceReverted):
-                rewind_occured_before_user_spoke = True; break
-            if isinstance(e, UserUttered): break
+                rewind_occured_before_user_spoke = True
+                break
+            if isinstance(e, UserUttered):
+                break
         if rewind_occured_before_user_spoke:
-            return prediction # don't activate as a result of a rewind
+            return prediction  # don't activate as a result of a rewind
 
-        if (
-            handoff_active is True
-            and time.time() - float(handoff.get("latest_event", time.time()))
-            > self.timeout
+        if handoff_active is True and time.time() - float(
+            handoff.get("latest_event", time.time())
+        ) > (
+            self.timeout
+            if handoff.get("agent_answered", False)
+            else self.timeout_unanswered
         ):
             # no incidence on prediction, just update slot and call deactivation route
             logger.debug("Deactivating BotfrontHandoffPolicy")
             asyncio.get_running_loop().create_task(
                 self._call_portal("deactivate", {"handoff": handoff})
             )
+            prediction[domain.index_for_action(ACTION_LISTEN_NAME)] = 1
 
         elif handoff_active is False and intent in self.triggers:
             events = []
@@ -197,16 +221,8 @@ class BotfrontHandoffPolicy(Policy):
 
     def persist(self, path: Text) -> None:
         config_file = os.path.join(path, "botfront_handoff_policy.json")
-        meta = {
-            "service": self.service,
-            "realm": self.realm,
-            "triggers": self.triggers,
-            "room_prefix": self.room_prefix,
-            "first_responders": self.first_responders,
-            "announcement_room": self.announcement_room,
-        }
         rasa.utils.io.create_directory_for_file(config_file)
-        rasa.utils.io.dump_obj_as_json_to_file(config_file, meta)
+        rasa.utils.io.dump_obj_as_json_to_file(config_file, self.get_params())
 
     @classmethod
     def load(cls, path: Text) -> "BotfrontHandoffPolicy":

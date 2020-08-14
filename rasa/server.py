@@ -500,6 +500,8 @@ def create_app(
                 for event in events:
                     tracker.update(event, app.agent.domain)
                 await processor._send_bot_messages(events, tracker, output_channel) # bf
+                await processor._schedule_reminders(events, tracker, output_channel, None) # bf
+                await processor._cancel_reminders(events, tracker) # bf
                 app.agent.tracker_store.save(tracker)
 
             return response.json(tracker.current_state(verbosity))

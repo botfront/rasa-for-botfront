@@ -117,7 +117,7 @@ class BotfrontDisambiguationPolicy(Policy):
             if int(i) >= len(intent_ranking):
                 return False
             eval_string = re.sub(
-                r"\$" + i, str(intent_ranking[int(i)]["confidence"]), eval_string
+                r"\$" + i, str(intent_ranking[int(i)].get("confidence", 1)), eval_string
             )
 
         return eval(eval_string, {"__builtins__": {}})
@@ -125,7 +125,7 @@ class BotfrontDisambiguationPolicy(Policy):
     @staticmethod
     def _should_fallback(intent_ranking, trigger):
         bonified_ranking = intent_ranking + [{"confidence": 0}]
-        return bonified_ranking[0]["confidence"] < trigger
+        return bonified_ranking[0].get("confidence", 1) < trigger
 
     def _is_user_input_expected(self, tracker: DialogueStateTracker) -> bool:
         return tracker.latest_action_name in [
