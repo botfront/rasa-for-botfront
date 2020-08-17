@@ -929,7 +929,7 @@ def create_app(
         nlu_data = rasa.utils.io.create_temporary_file(request.body, mode="w+b")
         data_path = os.path.abspath(nlu_data)
 
-        if not os.path.exists(eval_agent.model_directory):
+        if not eval_agent.model_directory or not os.path.exists(eval_agent.model_directory):
             raise ErrorResponse(409, "Conflict", "Loaded model file not found.")
 
         model_directory = eval_agent.model_directory
