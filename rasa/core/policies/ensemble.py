@@ -306,7 +306,6 @@ class PolicyEnsemble:
 
             try:
                 constr_func = registry.policy_from_module_path(policy_name)
-                if constr_func is None: continue # bf
                 try:
                     policy_object = constr_func(**policy)
                 except TypeError as e:
