@@ -2,17 +2,12 @@
 
 .. towncrier release notes start
 
-[1.10.10-bf.2] - 2020-08-13
+[1.10.10-bf.2] - 2020-08-17
 ^^^^^^^^^^^^^^^^^^^^^
 
 Features
 --------
-- `2bdc1bc <https://github.com/botfront/rasa-for-botfront/commit/2bdc1bc0f5ed3c249529556aac802614c901a536>`_: Include entity misclassifications in /model/test/intents route response.
-
-
-Misc.
---------
-- `bcf869b <https://github.com/botfront/rasa-for-botfront/commit/bcf869b0ede0cb14d96c7572b8b6e45337e34f69>`_: Change `utter_fallback` to `utter_default`.
+- `#27 <https://github.com/botfront/rasa-for-botfront/pull/27>`_: Include entity misclassifications in /model/test/intents route response.
 
 
 [1.10.10-bf.1] - 2020-08-12
