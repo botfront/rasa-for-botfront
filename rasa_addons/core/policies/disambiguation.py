@@ -36,7 +36,7 @@ class BotfrontDisambiguationPolicy(Policy):
         self.fallback_default_confidence = 0.30
         self.disambiguation_action = "action_botfront_disambiguation"
         self.disambiguation_followup_action = "action_botfront_disambiguation_followup"
-        self.fallback_action = "action_botfront_fallback"  # returns utter_default
+        self.fallback_action = "action_botfront_fallback"  # returns utter_fallback
         self.disambiguation_template = disambiguation_template
         self.excluded_intents = excluded_intents
         self.n_suggestions = n_suggestions
