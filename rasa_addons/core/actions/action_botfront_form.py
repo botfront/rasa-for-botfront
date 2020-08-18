@@ -2,6 +2,9 @@ import logging
 import functools
 from typing import Dict, Text, Any, List, Optional
 
+from rasa_addons.core.actions.required_slots_graph_parser import (
+    RequiredSlotsGraphParser,
+)
 from rasa_addons.core.actions.slot_rule_validator import validate_with_rule
 from rasa_addons.core.actions.submit_form_to_botfront import submit_form_to_botfront
 
@@ -42,7 +45,10 @@ class ActionBotfrontForm(Action):
         return f"FormAction('{self.name()}')"
 
     def required_slots(self, tracker):
-        return [s.get("name") for s in self.form_spec.get("slots", [])]
+        parser = RequiredSlotsGraphParser(
+            self.form_spec.get("required_slots_graph", {})
+        )
+        return parser.get_required_slots(tracker)
 
     def get_field_for_slot(
         self, slot: Text, field: Text, default: Optional[Any] = None,
@@ -125,7 +131,8 @@ class ActionBotfrontForm(Action):
             template = await nlg.generate(
                 f"utter_submit_{self.name()}", tracker, output_channel.name(),
             )
-            if template: events += [create_bot_utterance(template)]
+            if template:
+                events += [create_bot_utterance(template)]
         if collect_in_botfront:
             submit_form_to_botfront(tracker)
         return events
@@ -202,7 +209,8 @@ class ActionBotfrontForm(Action):
         role: Optional[Text] = None,
         group: Optional[Text] = None,
     ) -> Any:
-        if not name: return None
+        if not name:
+            return None
         # list is used to cover the case of list slot type
         value = list(
             tracker.get_latest_entity_values(name, entity_group=group, entity_role=role)
@@ -222,7 +230,8 @@ class ActionBotfrontForm(Action):
         domain: "Domain",
     ) -> Dict[Text, Any]:
         slot_to_fill = tracker.get_slot(REQUESTED_SLOT)
-        if not slot_to_fill: return {}
+        if not slot_to_fill:
+            return {}
 
         slot_values = {}
         for slot in self.required_slots(tracker):
@@ -277,7 +286,8 @@ class ActionBotfrontForm(Action):
             else return None
         """
         slot_to_fill = tracker.get_slot(REQUESTED_SLOT)
-        if not slot_to_fill: return {}
+        if not slot_to_fill:
+            return {}
         logger.debug(f"Trying to extract requested slot '{slot_to_fill}' ...")
 
         # get mapping for requested slot
@@ -338,7 +348,8 @@ class ActionBotfrontForm(Action):
         template = await nlg.generate(
             f"utter_{utter_what}_{slot}", temp_tracker, output_channel.name(),
         )
-        if not template: return []
+        if not template:
+            return []
         return [create_bot_utterance(template)]
 
     async def validate_slots(

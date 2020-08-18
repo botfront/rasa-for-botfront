@@ -75,11 +75,11 @@ def validate_with_rule(value, validation_rule) -> bool:
         if operator in NUM_COMPARATUM_OPERATORS:
             try:
                 comparatum = float(comparatum)
-            except ValueError:
+            except (ValueError, TypeError):
                 raise ValueError(
                     f"Validation operator '{operator}' requires a numerical comparatum."
                 )
-    except ValueError as e:
+    except (ValueError, TypeError) as e:
         logger.error(str(e))
         return False
     if operator in TEXT_VALUE_OPERATORS and not isinstance(value, str):
@@ -87,7 +87,7 @@ def validate_with_rule(value, validation_rule) -> bool:
     if operator in NUM_VALUE_OPERATORS:
         try:
             value = float(value)
-        except ValueError:
+        except (ValueError, TypeError):
             return False
     if operator == "is_in":
         return value in comparatum
