@@ -4,6 +4,7 @@ from rasa_addons.core.actions.slot_rule_validator import validate_with_rule
 
 class RequiredSlotsGraphParser:
     def __init__(self, required_slots_graph: Dict[Text, Any]) -> None:
+        self.start = None
         self.nodes = {}
         for node in required_slots_graph.get("nodes", []):
             if node.get("type") == "start":
@@ -24,6 +25,7 @@ class RequiredSlotsGraphParser:
             if self.check_condition(tracker, condition):
                 required_slots.append(self.nodes.get(target))
                 required_slots += self.get_required_slots(tracker, start=target)
+                break # use first matching condition, that's it
             else:
                 continue
         return required_slots
