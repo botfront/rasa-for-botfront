@@ -492,7 +492,7 @@ async def _train_nlu_with_validated_data(
         config = await file_importer.get_nlu_config(retrain_nlu)
         for lang in config:
             if config[lang]:
-                print_color("Start training {} NLU model ...".format(lang), color=bcolors.OKBLUE)
+                print_color("Start training <{}> NLU model ...".format(lang), color=bcolors.OKBLUE)
                 _, models[lang], _ = await rasa.nlu.train(
                     config[lang],
                     file_importer,
