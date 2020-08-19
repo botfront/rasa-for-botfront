@@ -337,7 +337,7 @@ async def test_validation(value, operator, comparatum, result, caplog):
         (required_slots_graph("OR", False), 17, True),
         (required_slots_graph("OR", False), 30, False),
         (required_slots_graph("OR", False), 66, True),
-        # over or eq 18 and under or eq 65
+        # at least 18 and at most 65
         (required_slots_graph("OR", True), 17, False),
         (required_slots_graph("OR", True), 30, True),
         (required_slots_graph("OR", True), 66, False),
@@ -345,7 +345,7 @@ async def test_validation(value, operator, comparatum, result, caplog):
         (required_slots_graph("AND", False), 17, False),
         (required_slots_graph("AND", False), 30, False),
         (required_slots_graph("AND", False), 66, False),
-        # over or eq 18 or under or eq 65 (tautology)
+        # at least 18 or at most 65 (tautology)
         (required_slots_graph("AND", True), 17, True),
         (required_slots_graph("AND", True), 30, True),
         (required_slots_graph("AND", True), 66, True),
