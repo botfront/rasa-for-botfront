@@ -2,6 +2,14 @@
 
 .. towncrier release notes start
 
+[1.10.10-bf.3] - 2020-08-19
+^^^^^^^^^^^^^^^^^^^^^
+
+Bugfixes
+--------
+- `bd8b860 <https://github.com/botfront/rasa-for-botfront/commit/bd8b860c0435b52c0d391816e9a71d18e9c12ef4>`_: Fix language not associated with right model at training time.
+
+
 [1.10.10-bf.2] - 2020-08-17
 ^^^^^^^^^^^^^^^^^^^^^
 
