@@ -50,6 +50,13 @@ def required_slots_graph(conjunction="OR", negated=False):
                 "condition": None,
             },
             {
+                "id": "d",
+                "type": "condition",
+                "source": "1",
+                "target": "3",
+                "condition": None,
+            },
+            {
                 "id": "b",
                 "type": "condition",
                 "source": "1",
@@ -107,13 +114,6 @@ def required_slots_graph(conjunction="OR", negated=False):
                     },
                     "properties": {"conjunction": "OR", "not": None},
                 },
-            },
-            {
-                "id": "d",
-                "type": "condition",
-                "source": "1",
-                "target": "3",
-                "condition": None,
             },
         ],
     }
@@ -366,7 +366,7 @@ async def test_required_slots(graph, age, authorization_req):
         (end) ---------------------------------------------------
     """
 
-    spec = {"name": "default_form", "required_slots_graph": graph}
+    spec = {"name": "default_form", "graph_elements": graph}
 
     form, tracker = new_form_and_tracker(
         spec, "age", ["authorization", "comments"]

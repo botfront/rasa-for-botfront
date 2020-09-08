@@ -20,7 +20,7 @@ class RequiredSlotsGraphParser:
         required_slots = []
         current_source = start or self.start
         current_edges = self.edges.get(current_source, [])
-        for edge in current_edges:
+        for edge in sorted(current_edges, key=lambda e: e.get("condition") is None):
             target, condition = edge.get("target"), edge.get("condition")
             if self.check_condition(tracker, condition):
                 required_slots.append(self.nodes.get(target))
