@@ -45,7 +45,7 @@ class ActionBotfrontForm(Action):
         return f"FormAction('{self.name()}')"
 
     def required_slots(self, tracker):
-        graph = self.form_spec.get("required_slots_graph")
+        graph = self.form_spec.get("graph_elements")
         if not graph:
             return [s.get("name") for s in self.form_spec.get("slots", [])]
         parser = RequiredSlotsGraphParser(graph)
