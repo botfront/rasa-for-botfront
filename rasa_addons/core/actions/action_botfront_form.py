@@ -1,6 +1,7 @@
 import logging
 import functools
 from typing import Dict, Text, Any, List, Optional
+from rasa.core.slots import Slot
 
 from rasa_addons.core.actions.required_slots_graph_parser import (
     RequiredSlotsGraphParser,
@@ -69,7 +70,9 @@ class ActionBotfrontForm(Action):
     ) -> List[Event]:
         # attempt retrieving spec
         if not len(self.form_spec):
-            for form in tracker.slots.get("bf_forms").initial_value:
+            for form in tracker.slots.get(
+                "bf_forms", Slot("bf_forms", initial_value=[])
+            ).initial_value:
                 if form.get("name") == self.name():
                     self.form_spec = clean_none_values(form)
             if not len(self.form_spec):
