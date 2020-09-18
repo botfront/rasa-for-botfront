@@ -15,22 +15,109 @@ from rasa.core.slots import Slot
 import pytest
 
 nlg = BotfrontTemplatedNaturalLanguageGenerator()
-def new_form_and_tracker(form_spec, requested_slot):
+
+
+def new_form_and_tracker(form_spec, requested_slot, additional_slots=[]):
     form = ActionBotfrontForm(form_spec.get("form_name"))
     tracker = DialogueStateTracker.from_dict(
         "default",
         [],
         [
             Slot(name=requested_slot),
+            *[Slot(name=name) for name in additional_slots],
             Slot(name="requested_slot", initial_value=requested_slot),
-            Slot(
-                name="bf_forms",
-                initial_value=[form_spec]
-            )
-        ]
+            Slot(name="bf_forms", initial_value=[form_spec]),
+        ],
     )
-    form.form_spec = form_spec # load spec manually
+    form.form_spec = form_spec  # load spec manually
     return form, tracker
+
+
+def required_slots_graph(conjunction="OR", negated=False):
+    return {
+        "nodes": [
+            {"id": "0", "type": "start"},
+            {"id": "1", "type": "slot", "slotName": "age"},
+            {"id": "2", "type": "slot", "slotName": "authorization"},
+            {"id": "3", "type": "slot", "slotName": "comments"},
+        ],
+        "edges": [
+            {
+                "id": "a",
+                "type": "condition",
+                "source": "0",
+                "target": "1",
+                "condition": None,
+            },
+            {
+                "id": "d",
+                "type": "condition",
+                "source": "1",
+                "target": "3",
+                "condition": None,
+            },
+            {
+                "id": "b",
+                "type": "condition",
+                "source": "1",
+                "target": "2",
+                "condition": {
+                    "type": "group",
+                    "id": "9a99988a-0123-4456-b89a-b1607f326fd8",
+                    "children1": {
+                        "a98ab9b9-cdef-4012-b456-71607f326fd9": {
+                            "type": "rule",
+                            "properties": {
+                                "field": "age",
+                                "operator": "lt",
+                                "value": ["18"],
+                                "valueSrc": ["value"],
+                                "valueType": ["text"],
+                                "valueError": [None],
+                            },
+                        },
+                        "98a8a9ba-0123-4456-b89a-b16e721c8cd0": {
+                            "type": "rule",
+                            "properties": {
+                                "field": "age",
+                                "operator": "gt",
+                                "value": ["65"],
+                                "valueSrc": ["value"],
+                                "valueType": ["text"],
+                                "valueError": [None],
+                            },
+                        },
+                    },
+                    "properties": {"conjunction": conjunction, "not": negated},
+                },
+            },
+            {
+                "id": "c",
+                "type": "condition",
+                "source": "2",
+                "target": "3",
+                "condition": {
+                    "type": "group",
+                    "id": "9a99988a-0123-4456-b89a-b1607f326fd8",
+                    "children1": {
+                        "a98ab9b9-cdef-4012-b456-71607f326fd9": {
+                            "type": "rule",
+                            "properties": {
+                                "field": "authorization",
+                                "operator": "is_exactly",
+                                "value": ["true"],
+                                "valueSrc": ["value"],
+                                "valueType": ["text"],
+                                "valueError": [None],
+                            },
+                        }
+                    },
+                    "properties": {"conjunction": "OR", "not": None},
+                },
+            },
+        ],
+    }
+
 
 def test_extract_requested_slot_default():
     """Test default extraction of a slot value from entity with the same name
@@ -39,10 +126,15 @@ def test_extract_requested_slot_default():
     spec = {"name": "default_form"}
 
     form, tracker = new_form_and_tracker(spec, "some_slot")
-    tracker.update(UserUttered(entities=[{"entity": "some_slot", "value": "some_value"}]))
+    tracker.update(
+        UserUttered(entities=[{"entity": "some_slot", "value": "some_value"}])
+    )
 
-    slot_values = form.extract_requested_slot(OutputChannel(), nlg, tracker, Domain.empty())
+    slot_values = form.extract_requested_slot(
+        OutputChannel(), nlg, tracker, Domain.empty()
+    )
     assert slot_values == {"some_slot": "some_value"}
+
 
 def test_extract_requested_slot_from_entity_no_intent():
     """Test extraction of a slot value from entity with the different name
@@ -51,20 +143,24 @@ def test_extract_requested_slot_from_entity_no_intent():
 
     spec = {
         "name": "default_form",
-        "slots": [{
-            "name": "some_slot",
-            "filling": [{
-                "type": "from_entity",
-                "entity": ["some_entity"]
-            }]
-        }]
+        "slots": [
+            {
+                "name": "some_slot",
+                "filling": [{"type": "from_entity", "entity": ["some_entity"]}],
+            }
+        ],
     }
 
     form, tracker = new_form_and_tracker(spec, "some_slot")
-    tracker.update(UserUttered(entities=[{"entity": "some_entity", "value": "some_value"}]))
+    tracker.update(
+        UserUttered(entities=[{"entity": "some_entity", "value": "some_value"}])
+    )
 
-    slot_values = form.extract_requested_slot(OutputChannel(), nlg, tracker, Domain.empty())
+    slot_values = form.extract_requested_slot(
+        OutputChannel(), nlg, tracker, Domain.empty()
+    )
     assert slot_values == {"some_slot": "some_value"}
+
 
 def test_extract_requested_slot_from_entity_with_intent():
     """Test extraction of a slot value from entity with the different name
@@ -73,32 +169,45 @@ def test_extract_requested_slot_from_entity_with_intent():
 
     spec = {
         "name": "default_form",
-        "slots": [{
-            "name": "some_slot",
-            "filling": [{
-                "type": "from_entity",
-                "entity": ["some_entity"],
-                "intent": ["some_intent"]
-            }]
-        }]
+        "slots": [
+            {
+                "name": "some_slot",
+                "filling": [
+                    {
+                        "type": "from_entity",
+                        "entity": ["some_entity"],
+                        "intent": ["some_intent"],
+                    }
+                ],
+            }
+        ],
     }
 
     form, tracker = new_form_and_tracker(spec, "some_slot")
-    tracker.update(UserUttered(
-        intent={"name": "some_intent", "confidence": 1.0},
-        entities=[{"entity": "some_entity", "value": "some_value"}]
-    ))
+    tracker.update(
+        UserUttered(
+            intent={"name": "some_intent", "confidence": 1.0},
+            entities=[{"entity": "some_entity", "value": "some_value"}],
+        )
+    )
 
-    slot_values = form.extract_requested_slot(OutputChannel(), nlg, tracker, Domain.empty())
+    slot_values = form.extract_requested_slot(
+        OutputChannel(), nlg, tracker, Domain.empty()
+    )
     assert slot_values == {"some_slot": "some_value"}
 
-    tracker.update(UserUttered(
-        intent={"name": "some_other_intent", "confidence": 1.0},
-        entities=[{"entity": "some_entity", "value": "some_value"}]
-    ))
+    tracker.update(
+        UserUttered(
+            intent={"name": "some_other_intent", "confidence": 1.0},
+            entities=[{"entity": "some_entity", "value": "some_value"}],
+        )
+    )
 
-    slot_values = form.extract_requested_slot(OutputChannel(), nlg, tracker, Domain.empty())
+    slot_values = form.extract_requested_slot(
+        OutputChannel(), nlg, tracker, Domain.empty()
+    )
     assert slot_values == {}
+
 
 def test_extract_requested_slot_from_intent():
     """Test extraction of a slot value from certain intent
@@ -106,30 +215,35 @@ def test_extract_requested_slot_from_intent():
 
     spec = {
         "name": "default_form",
-        "slots": [{
-            "name": "some_slot",
-            "filling": [{
-                "type": "from_intent",
-                "intent": ["some_intent"],
-                "value": "some_value"
-            }]
-        }]
+        "slots": [
+            {
+                "name": "some_slot",
+                "filling": [
+                    {
+                        "type": "from_intent",
+                        "intent": ["some_intent"],
+                        "value": "some_value",
+                    }
+                ],
+            }
+        ],
     }
 
     form, tracker = new_form_and_tracker(spec, "some_slot")
-    tracker.update(UserUttered(
-        intent={"name": "some_intent", "confidence": 1.0}
-    ))
+    tracker.update(UserUttered(intent={"name": "some_intent", "confidence": 1.0}))
 
-    slot_values = form.extract_requested_slot(OutputChannel(), nlg, tracker, Domain.empty())
+    slot_values = form.extract_requested_slot(
+        OutputChannel(), nlg, tracker, Domain.empty()
+    )
     assert slot_values == {"some_slot": "some_value"}
 
-    tracker.update(UserUttered(
-        intent={"name": "some_other_intent", "confidence": 1.0}
-    ))
+    tracker.update(UserUttered(intent={"name": "some_other_intent", "confidence": 1.0}))
 
-    slot_values = form.extract_requested_slot(OutputChannel(), nlg, tracker, Domain.empty())
+    slot_values = form.extract_requested_slot(
+        OutputChannel(), nlg, tracker, Domain.empty()
+    )
     assert slot_values == {}
+
 
 def test_extract_requested_slot_from_text_with_not_intent():
     """Test extraction of a slot value from text with certain intent
@@ -137,34 +251,39 @@ def test_extract_requested_slot_from_text_with_not_intent():
 
     spec = {
         "name": "default_form",
-        "slots": [{
-            "name": "some_slot",
-            "filling": [{
-                "type": "from_text",
-                "not_intent": ["some_intent"],
-            }]
-        }]
+        "slots": [
+            {
+                "name": "some_slot",
+                "filling": [{"type": "from_text", "not_intent": ["some_intent"],}],
+            }
+        ],
     }
 
     form, tracker = new_form_and_tracker(spec, "some_slot")
-    tracker.update(UserUttered(
-        intent={"name": "some_intent", "confidence": 1.0},
-        text="some_text"
-    ))
+    tracker.update(
+        UserUttered(intent={"name": "some_intent", "confidence": 1.0}, text="some_text")
+    )
 
-    slot_values = form.extract_requested_slot(OutputChannel(), nlg, tracker, Domain.empty())
+    slot_values = form.extract_requested_slot(
+        OutputChannel(), nlg, tracker, Domain.empty()
+    )
     assert slot_values == {}
 
-    tracker.update(UserUttered(
-        intent={"name": "some_other_intent", "confidence": 1.0},
-        text="some_text"
-    ))
+    tracker.update(
+        UserUttered(
+            intent={"name": "some_other_intent", "confidence": 1.0}, text="some_text"
+        )
+    )
 
-    slot_values = form.extract_requested_slot(OutputChannel(), nlg, tracker, Domain.empty())
+    slot_values = form.extract_requested_slot(
+        OutputChannel(), nlg, tracker, Domain.empty()
+    )
     assert slot_values == {"some_slot": "some_text"}
 
+
 @pytest.mark.parametrize(
-    "operator, value, comparatum, result", [
+    "operator, value, comparatum, result",
+    [
         ("is_in", "hey", ["hey", "ho", "fee"], True),
         ("is_exactly", "aheya", "hey", False),
         ("contains", "aheya", "hey", True),
@@ -184,13 +303,12 @@ def test_extract_requested_slot_from_text_with_not_intent():
 async def test_validation(value, operator, comparatum, result, caplog):
     spec = {
         "name": "default_form",
-        "slots": [{
-            "name": "some_slot",
-            "validation": {
-                "operator": operator,
-                "comparatum": comparatum,
+        "slots": [
+            {
+                "name": "some_slot",
+                "validation": {"operator": operator, "comparatum": comparatum,},
             }
-        }]
+        ],
     }
 
     form, tracker = new_form_and_tracker(spec, "some_slot")
@@ -204,6 +322,71 @@ async def test_validation(value, operator, comparatum, result, caplog):
     else:
         assert len(events) == 2
         assert isinstance(events[0], SlotSet) and events[0].value == None
-        assert isinstance(events[1], BotUttered) and events[1].text == "utter_invalid_some_slot"
+        assert (
+            isinstance(events[1], BotUttered)
+            and events[1].text == "utter_invalid_some_slot"
+        )
         if result is None:
             assert f"Validation operator '{operator}' requires" in caplog.messages[0]
+
+
+@pytest.mark.parametrize(
+    "graph, age, authorization_req",
+    [
+        # under 18 or over 65
+        (required_slots_graph("OR", False), 17, True),
+        (required_slots_graph("OR", False), 30, False),
+        (required_slots_graph("OR", False), 66, True),
+        # at least 18 and at most 65
+        (required_slots_graph("OR", True), 17, False),
+        (required_slots_graph("OR", True), 30, True),
+        (required_slots_graph("OR", True), 66, False),
+        # under 18 and over 65 (contradiction)
+        (required_slots_graph("AND", False), 17, False),
+        (required_slots_graph("AND", False), 30, False),
+        (required_slots_graph("AND", False), 66, False),
+        # at least 18 or at most 65 (tautology)
+        (required_slots_graph("AND", True), 17, True),
+        (required_slots_graph("AND", True), 30, True),
+        (required_slots_graph("AND", True), 66, True),
+    ],
+)
+async def test_required_slots(graph, age, authorization_req):
+    """
+        (start)
+        |
+        AGE --- fail age condition --- AUTHORIZATION --- fail authorization
+        |                               |                       condition
+        |                               pass authorization          |
+        pass age condition              condition                   |
+        |                               /                           |
+        |                              /                           /
+        COMMENTS ----------------------                           /
+        |                                                        /
+        (end) ---------------------------------------------------
+    """
+
+    spec = {"name": "default_form", "graph_elements": graph}
+
+    form, tracker = new_form_and_tracker(
+        spec, "age", ["authorization", "comments"]
+    )
+    tracker.update(SlotSet("age", age))
+
+    # first test with no authorization
+    tracker.update(SlotSet("authorization", "false"))
+    assert form.required_slots(tracker) == [
+        "age",
+        *(["authorization"] if authorization_req else []),
+        # here comments is only required if authorization is not required
+        *(["comments"] if not authorization_req else [])
+    ]
+
+    # then with authorization
+    tracker.update(SlotSet("authorization", "true"))
+    assert form.required_slots(tracker) == [
+        "age",
+        *(["authorization"] if authorization_req else []),
+        # now comments is always required
+        "comments"
+    ]
