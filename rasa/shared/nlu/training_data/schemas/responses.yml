@@ -30,3 +30,7 @@ schema;responses:
                   type: "str"
           channel:
             type: "str"
+          language:
+            type: "str"
+          metadata:
+            type: "any"
