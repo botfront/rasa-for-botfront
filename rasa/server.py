@@ -982,14 +982,9 @@ def create_app(
         try:
             data = emulator.normalise_request_json(request.json)
             try:
-                # bf
-                processor = app.agent.create_processor()
-                lang = request.json.get("lang")
-                if not lang:
-                    raise Exception("'lang' property is required'")
-                message = UserMessage(data.get("text"), metadata={"language": lang})
-                parsed_data = await processor._parse_message(message)
-                # bf: end
+                parsed_data = await app.agent.parse_message_using_nlu_interpreter(
+                    data.get("text"), lang=request.json.get("lang"), # bf
+                )
             except Exception as e:
                 logger.debug(traceback.format_exc())
                 raise ErrorResponse(
