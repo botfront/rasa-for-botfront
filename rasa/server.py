@@ -903,10 +903,12 @@ def create_app(
                     model_directory, f"{classifier}_errors.json"
                 )
                 if os.path.isfile(entity_errors_file):
-                    import json
-
-                    entity_errors = json.loads(rasa.utils.io.read_file(entity_errors_file))
-                    evaluation["entity_evaluation"][classifier]["predictions"] = entity_errors
+                    entity_errors = rasa.shared.utils.io.read_json_file(
+                        entity_errors_file
+                    )
+                    evaluation["entity_evaluation"][classifier][
+                        "predictions"
+                    ] = entity_errors
             # </ bf
             return response.json(evaluation)
         except Exception as e:
@@ -983,7 +985,7 @@ def create_app(
             data = emulator.normalise_request_json(request.json)
             try:
                 parsed_data = await app.agent.parse_message_using_nlu_interpreter(
-                    data.get("text"), lang=request.json.get("lang"), # bf
+                    data.get("text"), lang=request.json.get("lang"),  # bf
                 )
             except Exception as e:
                 logger.debug(traceback.format_exc())
@@ -1188,7 +1190,9 @@ def _training_payload_from_json(request: Request) -> Dict[Text, Any]:
     config_paths = []
     for key in request_payload["config"].keys():
         config_path = os.path.join(temp_dir, "config-{}.yml".format(key))
-        rasa.shared.utils.io.write_text_file(request_payload["config"][key], config_path)
+        rasa.shared.utils.io.write_text_file(
+            request_payload["config"][key], config_path
+        )
         config_paths += [config_path]
 
     if "nlu" in request_payload:
@@ -1197,7 +1201,9 @@ def _training_payload_from_json(request: Request) -> Dict[Text, Any]:
 
         for key in request_payload["nlu"].keys():
             nlu_path = os.path.join(nlu_dir, "{}.md".format(key))
-            rasa.shared.utils.io.write_text_file(request_payload["nlu"][key]["data"], nlu_path)
+            rasa.shared.utils.io.write_text_file(
+                request_payload["nlu"][key]["data"], nlu_path
+            )
 
     # << bf
 
