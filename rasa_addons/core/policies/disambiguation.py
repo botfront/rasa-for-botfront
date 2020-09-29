@@ -28,7 +28,7 @@ class BotfrontDisambiguationPolicy(Policy):
         disambiguation_trigger: str = "$0 < 2 * $1",
         fallback_trigger: float = 0.30,
         disambiguation_template: Text = "utter_disambiguation",
-        excluded_intents: List = ["^chitchat\..*", "^basics\..*"],
+        excluded_intents: List = [r"^chitchat\..*", r"^basics\..*"],
         n_suggestions: int = 2,
     ) -> None:
         super(BotfrontDisambiguationPolicy, self).__init__(priority=priority)
@@ -55,10 +55,11 @@ class BotfrontDisambiguationPolicy(Policy):
         intents = [
             (
                 intent.get("name"),
-                self.fill_entity(intent.get("canonical", intent.get("name")), entities)
+                self.fill_entity(intent.get("canonical", intent.get("name")), entities),
             )
             for intent in intent_ranking
-            if intent.get("name") is not None and len(
+            if intent.get("name") is not None
+            and len(
                 [
                     excl
                     for excl in self.excluded_intents
@@ -83,7 +84,10 @@ class BotfrontDisambiguationPolicy(Policy):
                     "payload": "/{}{}".format(intent[0], entities_json),
                 }
             )
-        return {"template": self.disambiguation_template, "quick_replies": quick_replies}
+        return {
+            "template": self.disambiguation_template,
+            "quick_replies": quick_replies,
+        }
 
     @staticmethod
     def fill_entity(template, entities):
@@ -95,7 +99,7 @@ class BotfrontDisambiguationPolicy(Policy):
 
     @staticmethod
     def set_slot(tracker, message):
-        if len(message["quick_replies"]) < 2:
+        if len(message.get("quick_replies", [])) < 2:
             return None  # abort if only deny_suggestions button would be shown
         try:
             tracker.update(SlotSet("disambiguation_message", value=message))
@@ -119,7 +123,7 @@ class BotfrontDisambiguationPolicy(Policy):
             if int(i) >= len(intent_ranking):
                 return False
             eval_string = re.sub(
-                r"\$" + i, str(intent_ranking[int(i)]["confidence"]), eval_string
+                r"\$" + i, str(intent_ranking[int(i)].get("confidence", 1)), eval_string
             )
 
         return eval(eval_string, {"__builtins__": {}})
@@ -127,7 +131,7 @@ class BotfrontDisambiguationPolicy(Policy):
     @staticmethod
     def _should_fallback(intent_ranking, trigger):
         bonified_ranking = intent_ranking + [{"confidence": 0}]
-        return bonified_ranking[0]["confidence"] < trigger
+        return bonified_ranking[0].get("confidence", 1) < trigger
 
     def _is_user_input_expected(self, tracker: DialogueStateTracker) -> bool:
         return tracker.latest_action_name in [

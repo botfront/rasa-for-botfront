@@ -39,7 +39,7 @@ class BotfrontFileImporter(TrainingDataImporter):
                 config = rasa.shared.utils.io.read_config_file(file)
                 lang = config["language"]
                 self.core_config = {"policies": config["policies"]}
-                self.nlu_config[lang] = {"pipeline": config["pipeline"], "data": lang}
+                self.nlu_config[lang] = {"pipeline": config["pipeline"], "language": lang}
     
     def path_for_nlu_lang(self, lang) -> List[Text]:
         return [x for x in self._nlu_files if "{}.md".format(lang) in x]

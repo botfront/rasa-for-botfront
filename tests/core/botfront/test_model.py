@@ -1,3 +1,4 @@
+import asyncio
 import os
 import tempfile
 import time
@@ -7,20 +8,17 @@ from typing import Text, Optional, Any
 from unittest.mock import Mock
 
 import pytest
-from _pytest.tmpdir import TempdirFactory
 
-import rasa
-import rasa.core
-import rasa.nlu
-from rasa.importers.rasa import RasaFileImporter
-from rasa.constants import (
+from rasa.shared.importers.importer import TrainingDataImporter
+from rasa.shared.importers.rasa import RasaFileImporter
+from rasa.shared.constants import (
     DEFAULT_CONFIG_PATH,
-    DEFAULT_DATA_PATH,
     DEFAULT_DOMAIN_PATH,
+    DEFAULT_DATA_PATH,
     DEFAULT_CORE_SUBDIRECTORY_NAME,
 )
-from rasa.core.domain import Domain
-from rasa.core.utils import get_dict_hash
+from rasa.shared.core.domain import KEY_RESPONSES
+from rasa.shared.core.domain import Domain
 from rasa import model
 from rasa.model import (
     FINGERPRINT_CONFIG_KEY,
@@ -46,11 +44,13 @@ from rasa.model import (
     FingerprintComparisonResult,
 )
 from rasa.exceptions import ModelNotFound
+from tests.core.conftest import DEFAULT_DOMAIN_PATH_WITH_MAPPING
 
+
+from rasa.telemetry import TELEMETRY_ENABLED_ENVIRONMENT_VARIABLE
+os.environ[TELEMETRY_ENABLED_ENVIRONMENT_VARIABLE] = "false"
 
 def test_get_latest_model(trained_rasa_model: str):
-    import shutil
-
     path_of_latest = os.path.join(os.path.dirname(trained_rasa_model), "latest.tar.gz")
     shutil.copy(trained_rasa_model, path_of_latest)
 
@@ -75,13 +75,13 @@ def test_get_model_context_manager(trained_rasa_model: str):
 
 
 @pytest.mark.parametrize("model_path", ["foobar", "rasa", "README.md", None])
-def test_get_model_exception(model_path):
+def test_get_model_exception(model_path: Optional[Text]):
     with pytest.raises(ModelNotFound):
         get_model(model_path)
 
 
 def test_get_model_from_directory_with_subdirectories(
-    trained_rasa_model, tmpdir_factory: TempdirFactory
+    trained_rasa_model: Text, tmp_path: Path
 ):
     unpacked = get_model(trained_rasa_model)
     unpacked_core, unpacked_nlu = get_model_subdirectories(unpacked)
@@ -89,12 +89,11 @@ def test_get_model_from_directory_with_subdirectories(
     assert unpacked_core
     assert unpacked_nlu
 
-    directory = tmpdir_factory.mktemp("empty_model_dir").strpath
     with pytest.raises(ModelNotFound):
-        get_model_subdirectories(directory)
+        get_model_subdirectories(str(tmp_path))  # temp path should be empty
 
 
-def test_get_model_from_directory_nlu_only(trained_rasa_model):
+def test_get_model_from_directory_nlu_only(trained_rasa_model: Text):
     unpacked = get_model(trained_rasa_model)
     shutil.rmtree(os.path.join(unpacked, DEFAULT_CORE_SUBDIRECTORY_NAME))
     unpacked_core, unpacked_nlu = get_model_subdirectories(unpacked)
@@ -163,172 +162,111 @@ def test_core_fingerprint_changed(fingerprint2, changed):
     )
 
 
-def test_nlu_fingerprint_not_changed():
-    assert not did_section_fingerprint_change(_fingerprint(), _fingerprint(), SECTION_NLU)
-
-
 @pytest.mark.parametrize(
-    "fingerprint2",
+    "fingerprint2, changed",
     [
-        _fingerprint(config=["other"]),
-        _fingerprint(rasa_version="100"),
-        _fingerprint(rasa_version="100", config=["other"]),
-        _fingerprint(config_nlu={"en": "test_en", "fr": "test_fr_changed"}, nlu={"en": "test_en_changed", "fr": "test_fr"}),
-        _fingerprint(nlu={"en": "test_en_changed", "fr": "test_fr_changed"}),
-        _fingerprint(config_nlu={"en": "test_en_changed", "fr": "test_fr_changed"}),
-
+        (_fingerprint(config=["other"]), ["en", "fr"]),
+        (_fingerprint(nlu={"en": "test_en_changed", "fr": "test_fr_changed"}), ["en", "fr"]),
+        (_fingerprint(nlu={"en": "test_en", "fr": "test_fr_changed"}), ["fr"]),
+        (_fingerprint(nlu={"en": "test_en_changed", "fr": "test_fr"}), ["en"]),
+        (_fingerprint(config_nlu={"en": "test_en", "fr": "test_fr_changed"}, nlu={"en": "test_en_changed", "fr": "test_fr"}), ["en", "fr"]),
+        (_fingerprint(config_nlu={"en": "test_en", "fr": "test_fr_changed"}, nlu={"en": "test_en", "fr": "test_fr"}), ["fr"]),
+        (_fingerprint(rasa_version="100"), ["en", "fr"]),
+        (_fingerprint(rasa_version="100", config=["other"]), ["en", "fr"]),
+        (_fingerprint(nlg=["other"]), []),
+        (_fingerprint(config_core=["other"]), []),
+        (_fingerprint(stories=["other"]), []),
     ],
 )
-def test_nlu_fingerprint_changed_all(fingerprint2):
-    fingerprint1 = _fingerprint()
-    assert sorted(did_section_fingerprint_change(fingerprint1, fingerprint2, SECTION_NLU)) == ["en", "fr"]
-
-
-@pytest.mark.parametrize(
-    "fingerprint",
-    [
-        {
-            "new": _fingerprint(nlu={"en": "test_en", "fr": "test_fr_changed"}),
-            "old": _fingerprint(),
-            "retrain_nlu": ["fr"],
-        },
-        {
-            "new": _fingerprint(nlu={"en": "test_en_changed", "fr": "test_fr_changed"}),
-            "old": _fingerprint(),
-            "retrain_nlu": ["en", "fr"],
-        },
-        {
-            "new": _fingerprint(nlu={"en": "test_en_changed", "fr": "test_fr"}),
-            "old": _fingerprint(),
-            "retrain_core": False,
-            "retrain_nlu": ["en"],
-        },
-        {
-            "new": _fingerprint(config_nlu={"en": "test_en", "fr": "test_fr_changed"}),
-            "old": _fingerprint(),
-            "retrain_nlu": ["fr"],
-        },
-        {
-            "new": _fingerprint(config_nlu={"en": "test_en_changed", "fr": "test_fr_changed"}),
-            "old": _fingerprint(),
-            "retrain_nlu": ["en", "fr"],
-        },
-        {
-            "new": _fingerprint(config_nlu={"en": "test_en_changed", "fr": "test_fr"}),
-            "old": _fingerprint(),
-            "retrain_nlu": ["en"],
-        },
-        {
-            "new": _fingerprint(),
-            "old": _fingerprint(),
-            "retrain_nlu": [],
-        },
-        {
-            "new": _fingerprint(nlu={"en": "test_en", "fr": "test_fr_changed"}),
-            "old": _fingerprint(nlu={}, config_nlu={}),
-            "retrain_nlu": ["en", "fr"],
-        },
-        {
-            "new": _fingerprint(nlu={}),
-            "old": _fingerprint(nlu={"en": "test_en", "fr": "test_fr_changed"}),
-            "retrain_nlu": ["en", "fr"],
-        },
-        {
-            "old": _fingerprint(nlu={}, config_nlu={}),
-            "new": _fingerprint(nlu={"en": "test_en"}, config_nlu={"en": "test_en"}),
-            "retrain_nlu": ["en"],
-        },
-        {
-            "old": _fingerprint(nlu={"en": "test_en"}, config_nlu={"en": "test_en"}),
-            "new": _fingerprint(nlu={"en": "test_en", "fr": "test_fr_changed"}, config_nlu={"en": "test_en", "fr": "test_fr_changed"}),
-            "retrain_nlu": ["fr"],
-        },
-        {
-            "new": _fingerprint(nlu={"en": "test_en_changed", "fr": "test_fr"}, config_nlu={"en": "test_en", "fr": "test_fr"}),
-            "old": _fingerprint(nlu={"en": "test_en", "fr": "test_fr"}, config_nlu={"en": "test_en", "fr": "test_fr"}),
-            "retrain_nlu": ["en"],
-        },
-        {
-            "old": _fingerprint(config='', config_nlu={}, nlu={}),
-            "new": _fingerprint(config='', config_nlu={'en': 'e50f96c444c3804c4bb249b8a802948b'}, nlu={'en': 'asdasdasdasd'}),
-            "retrain_nlu": ["en"],
-        },
-    ],
-)
-def test_nlu_fingerprint_languages_changed(fingerprint):
-    assert sorted(did_section_fingerprint_change(fingerprint["old"], fingerprint["new"], SECTION_NLU)) == fingerprint["retrain_nlu"]
-
-
-@pytest.mark.parametrize(
-    "fingerprint2",
-    [
-        _fingerprint(config_nlu={"en": "test_en", "fr": "test_fr_changed"}),
-        _fingerprint(nlu={"en": "test_en", "fr": "test_fr_changed"}),
-    ],
-)
-def test_nlu_fingerprint_changed_fr(fingerprint2):
+def test_nlu_fingerprint_changed(fingerprint2, changed):
     fingerprint1 = _fingerprint()
     assert (
-        did_section_fingerprint_change(fingerprint1, fingerprint2, SECTION_NLU) == ["fr"]
+        set(did_section_fingerprint_change(fingerprint1, fingerprint2, SECTION_NLU))
+        == set(changed)
     )
-    assert did_section_fingerprint_change(fingerprint1, fingerprint2, SECTION_NLU) == ["fr"]
 
 
 def _project_files(
-    project,
-    config_file=DEFAULT_CONFIG_PATH,
-    domain=DEFAULT_DOMAIN_PATH,
-    training_files=DEFAULT_DATA_PATH,
-):
+    project: Text,
+    config_file: Text = DEFAULT_CONFIG_PATH,
+    domain: Text = DEFAULT_DOMAIN_PATH,
+    training_files: Text = DEFAULT_DATA_PATH,
+) -> TrainingDataImporter:
     paths = {
         "config_file": config_file,
         "domain_path": domain,
         "training_data_paths": training_files,
     }
-
-    paths = {k: v if v is None else os.path.join(project, v) for k, v in paths.items()}
+    paths = {
+        k: v if v is None or Path(v).is_absolute() else os.path.join(project, v)
+        for k, v in paths.items()
+    }
     paths["training_data_paths"] = [paths["training_data_paths"]]
 
     from rasa_addons.importers import BotfrontFileImporter # bf
     return BotfrontFileImporter(**paths) # bf
 
 
-async def test_create_fingerprint_from_paths(project):
-    project_files = _project_files(project)
+@pytest.mark.parametrize(
+    "domain_path",
+    [
+        DEFAULT_DOMAIN_PATH,
+        str((Path(".") / DEFAULT_DOMAIN_PATH_WITH_MAPPING).absolute()),
+    ],
+)
+async def test_create_fingerprint_from_paths(project: Text, domain_path: Text):
+    project_files = _project_files(project, domain=domain_path)
 
     assert await model_fingerprint(project_files)
 
 
-@pytest.mark.parametrize(
-    "project_files", [["invalid", "invalid", "invalid"], [None, None, None]]
-)
-async def test_create_fingerprint_from_invalid_paths(project, project_files):
-    from rasa.nlu.training_data import TrainingData
-    from rasa.core.training.structures import StoryGraph
+async def test_fingerprinting_changed_response_text(project: Text):
+    importer = _project_files(project)
 
-    project_files = _project_files(project, *project_files)
-    expected = _fingerprint(
-        config="",
-        config_nlu="",
-        config_core="",
-        domain=hash(Domain.empty()),
-        nlg=get_dict_hash(Domain.empty().templates),
-        stories=0, # bf
-        nlu={}, # bf
-        rasa_version=rasa.__version__,
+    old_fingerprint = await model_fingerprint(importer)
+    old_domain = await importer.get_domain()
+
+    # Change NLG content but keep actions the same
+    domain_with_changed_nlg = old_domain.as_dict()
+    domain_with_changed_nlg[KEY_RESPONSES]["utter_greet"].append({"text": "hi"})
+    domain_with_changed_nlg = Domain.from_dict(domain_with_changed_nlg)
+
+    importer.get_domain = asyncio.coroutine(lambda: domain_with_changed_nlg)
+
+    new_fingerprint = await model_fingerprint(importer)
+
+    assert (
+        old_fingerprint[FINGERPRINT_DOMAIN_WITHOUT_NLG_KEY]
+        == new_fingerprint[FINGERPRINT_DOMAIN_WITHOUT_NLG_KEY]
     )
+    assert old_fingerprint[FINGERPRINT_NLG_KEY] != new_fingerprint[FINGERPRINT_NLG_KEY]
 
-    actual = await model_fingerprint(project_files)
-    assert actual[FINGERPRINT_TRAINED_AT_KEY] is not None
 
-    del actual[FINGERPRINT_TRAINED_AT_KEY]
-    del expected[FINGERPRINT_TRAINED_AT_KEY]
+async def test_fingerprinting_additional_action(project: Text):
+    importer = _project_files(project)
 
-    assert actual == expected
+    old_fingerprint = await model_fingerprint(importer)
+    old_domain = await importer.get_domain()
+
+    domain_with_new_action = old_domain.as_dict()
+    domain_with_new_action[KEY_RESPONSES]["utter_new"] = [{"text": "hi"}]
+    domain_with_new_action = Domain.from_dict(domain_with_new_action)
+
+    importer.get_domain = asyncio.coroutine(lambda: domain_with_new_action)
+
+    new_fingerprint = await model_fingerprint(importer)
+
+    assert (
+        old_fingerprint[FINGERPRINT_DOMAIN_WITHOUT_NLG_KEY]
+        != new_fingerprint[FINGERPRINT_DOMAIN_WITHOUT_NLG_KEY]
+    )
+    assert old_fingerprint[FINGERPRINT_NLG_KEY] != new_fingerprint[FINGERPRINT_NLG_KEY]
 
 
 @pytest.mark.parametrize("use_fingerprint", [True, False])
-async def test_rasa_packaging(trained_rasa_model, project, use_fingerprint):
+async def test_rasa_packaging(
+    trained_rasa_model: Text, project: Text, use_fingerprint: bool, tmp_path: Path
+):
     unpacked_model_path = get_model(trained_rasa_model)
 
     os.remove(os.path.join(unpacked_model_path, FINGERPRINT_FILE_PATH))
@@ -337,8 +275,7 @@ async def test_rasa_packaging(trained_rasa_model, project, use_fingerprint):
     else:
         fingerprint = None
 
-    tempdir = tempfile.mkdtemp()
-    output_path = os.path.join(tempdir, "test.tar.gz")
+    output_path = str(tmp_path / "test.tar.gz")
 
     create_package_rasa(unpacked_model_path, output_path, fingerprint)
 
@@ -364,7 +301,6 @@ async def test_rasa_packaging(trained_rasa_model, project, use_fingerprint):
             "retrain_nlu": [],
             "retrain_nlg": True,
         },
-
         {
             "new": _fingerprint(nlu={"en": "test_en", "fr": "test_fr_changed"}),
             "old": _fingerprint(),
@@ -465,23 +401,26 @@ async def test_rasa_packaging(trained_rasa_model, project, use_fingerprint):
         },
     ],
 )
-def test_should_retrain(trained_rasa_model: Text, fingerprint: Fingerprint):
-    old_model = set_fingerprint(trained_rasa_model, fingerprint["old"])
+def test_should_retrain(
+    trained_rasa_model: Text, fingerprint: Fingerprint, tmp_path: Path
+):
+    old_model = set_fingerprint(trained_rasa_model, fingerprint["old"], tmp_path)
 
-    retrain = should_retrain(fingerprint["new"], old_model, tempfile.mkdtemp())
+    retrain = should_retrain(fingerprint["new"], old_model, str(tmp_path))
 
     assert retrain.should_retrain_core() == fingerprint["retrain_core"]
     assert retrain.should_retrain_nlg() == fingerprint["retrain_nlg"]
     assert set(retrain.should_retrain_nlu()) == set(fingerprint["retrain_nlu"])
 
 
-def set_fingerprint(trained_rasa_model: Text, fingerprint: Fingerprint) -> Text:
+def set_fingerprint(
+    trained_rasa_model: Text, fingerprint: Fingerprint, tmp_path: Path
+) -> Text:
     unpacked_model_path = get_model(trained_rasa_model)
 
     os.remove(os.path.join(unpacked_model_path, FINGERPRINT_FILE_PATH))
 
-    tempdir = tempfile.mkdtemp()
-    output_path = os.path.join(tempdir, "test.tar.gz")
+    output_path = str(tmp_path / "test.tar.gz")
 
     create_package_rasa(unpacked_model_path, output_path, fingerprint)
 
@@ -545,3 +484,78 @@ async def test_update_with_new_domain(trained_rasa_model: Text, tmpdir: Path):
     actual = Domain.load(tmpdir / DEFAULT_CORE_SUBDIRECTORY_NAME / DEFAULT_DOMAIN_PATH)
 
     assert actual.is_empty()
+
+
+@pytest.mark.parametrize(
+    "fingerprint",
+    [
+        {
+            "new": _fingerprint(nlu={"en": "test_en", "fr": "test_fr_changed"}),
+            "old": _fingerprint(),
+            "retrain_nlu": ["fr"],
+        },
+        {
+            "new": _fingerprint(nlu={"en": "test_en_changed", "fr": "test_fr_changed"}),
+            "old": _fingerprint(),
+            "retrain_nlu": ["en", "fr"],
+        },
+        {
+            "new": _fingerprint(nlu={"en": "test_en_changed", "fr": "test_fr"}),
+            "old": _fingerprint(),
+            "retrain_core": False,
+            "retrain_nlu": ["en"],
+        },
+        {
+            "new": _fingerprint(config_nlu={"en": "test_en", "fr": "test_fr_changed"}),
+            "old": _fingerprint(),
+            "retrain_nlu": ["fr"],
+        },
+        {
+            "new": _fingerprint(config_nlu={"en": "test_en_changed", "fr": "test_fr_changed"}),
+            "old": _fingerprint(),
+            "retrain_nlu": ["en", "fr"],
+        },
+        {
+            "new": _fingerprint(config_nlu={"en": "test_en_changed", "fr": "test_fr"}),
+            "old": _fingerprint(),
+            "retrain_nlu": ["en"],
+        },
+        {
+            "new": _fingerprint(),
+            "old": _fingerprint(),
+            "retrain_nlu": [],
+        },
+        {
+            "new": _fingerprint(nlu={"en": "test_en", "fr": "test_fr_changed"}),
+            "old": _fingerprint(nlu={}, config_nlu={}),
+            "retrain_nlu": ["en", "fr"],
+        },
+        {
+            "new": _fingerprint(nlu={}),
+            "old": _fingerprint(nlu={"en": "test_en", "fr": "test_fr_changed"}),
+            "retrain_nlu": ["en", "fr"],
+        },
+        {
+            "old": _fingerprint(nlu={}, config_nlu={}),
+            "new": _fingerprint(nlu={"en": "test_en"}, config_nlu={"en": "test_en"}),
+            "retrain_nlu": ["en"],
+        },
+        {
+            "old": _fingerprint(nlu={"en": "test_en"}, config_nlu={"en": "test_en"}),
+            "new": _fingerprint(nlu={"en": "test_en", "fr": "test_fr_changed"}, config_nlu={"en": "test_en", "fr": "test_fr_changed"}),
+            "retrain_nlu": ["fr"],
+        },
+        {
+            "new": _fingerprint(nlu={"en": "test_en_changed", "fr": "test_fr"}, config_nlu={"en": "test_en", "fr": "test_fr"}),
+            "old": _fingerprint(nlu={"en": "test_en", "fr": "test_fr"}, config_nlu={"en": "test_en", "fr": "test_fr"}),
+            "retrain_nlu": ["en"],
+        },
+        {
+            "old": _fingerprint(config='', config_nlu={}, nlu={}),
+            "new": _fingerprint(config='', config_nlu={'en': 'e50f96c444c3804c4bb249b8a802948b'}, nlu={'en': 'asdasdasdasd'}),
+            "retrain_nlu": ["en"],
+        },
+    ],
+)
+def test_nlu_fingerprint_languages_changed(fingerprint):
+    assert sorted(did_section_fingerprint_change(fingerprint["old"], fingerprint["new"], SECTION_NLU)) == fingerprint["retrain_nlu"]

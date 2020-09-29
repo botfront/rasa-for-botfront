@@ -186,7 +186,7 @@ def action_from_name(
     elif name.startswith(UTTER_PREFIX):
         return ActionUtterTemplate(name)
     # bf >
-    elif name.endswith("_form") and any(form.get("name") == name for form in bf_forms):
+    elif name.endswith("_form") and any(form == name for form in bf_forms):
         return generate_bf_form_action(name)
     elif name in actions_bf:
         return actions_bf[name]

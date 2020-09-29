@@ -568,7 +568,7 @@ async def _train_nlu_with_validated_data(
             for lang in config:
                 if config[lang]:
                     print_color(
-                        "Start training {} NLU model ...".format(lang),
+                        "Start training <{}> NLU model ...".format(lang),
                         color=rasa.shared.utils.io.bcolors.OKBLUE,
                     )
                     await rasa.nlu.train(

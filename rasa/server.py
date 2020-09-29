@@ -888,8 +888,26 @@ def create_app(
         _, nlu_model = model.get_model_subdirectories(model_directory)
 
         try:
-            language = request.args.get("language", None)  # bf
-            evaluation = run_evaluation(data_path, nlu_model.get(language), disable_plotting=True)  # bf
+            # bf >
+            language = request.args.get("language", None)
+            evaluation = run_evaluation(
+                data_path,
+                nlu_model.get(language),
+                disable_plotting=True,
+                errors=True,
+                output_directory=model_directory,
+            )
+
+            for classifier in evaluation.get("entity_evaluation", {}):
+                entity_errors_file = os.path.join(
+                    model_directory, f"{classifier}_errors.json"
+                )
+                if os.path.isfile(entity_errors_file):
+                    import json
+
+                    entity_errors = json.loads(rasa.utils.io.read_file(entity_errors_file))
+                    evaluation["entity_evaluation"][classifier]["predictions"] = entity_errors
+            # </ bf
             return response.json(evaluation)
         except Exception as e:
             logger.error(traceback.format_exc())

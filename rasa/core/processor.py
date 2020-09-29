@@ -259,7 +259,7 @@ class MessageProcessor:
         # which maintains conversation state
         tracker = await self.get_tracker_with_session_start(sender_id, output_channel)
         if tracker:
-            action = self._get_action(action_name)
+            action = self._get_action(action_name, tracker) # bf
             await self._run_action(
                 action, tracker, output_channel, nlg, policy, confidence
             )

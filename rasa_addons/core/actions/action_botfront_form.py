@@ -1,6 +1,9 @@
 import logging
 import functools
-from typing import Dict, Text, Any, List, Union, Optional, Tuple
+from typing import Dict, Text, Any, List, Optional
+from rasa_addons.core.actions.required_slots_graph_parser import (
+    RequiredSlotsGraphParser,
+)
 from rasa_addons.core.actions.slot_rule_validator import validate_with_rule
 from rasa_addons.core.actions.submit_form_to_botfront import submit_form_to_botfront
 
@@ -41,7 +44,12 @@ class ActionBotfrontForm(Action):
         return f"FormAction('{self.name()}')"
 
     def required_slots(self, tracker):
-        return [s.get("name") for s in self.form_spec.get("slots", [])]
+        graph = self.form_spec.get("graph_elements")
+        if not graph:
+            return [s.get("name") for s in self.form_spec.get("slots", [])]
+        parser = RequiredSlotsGraphParser(graph)
+        required_slots = parser.get_required_slots(tracker)
+        return required_slots
 
     def get_field_for_slot(
         self, slot: Text, field: Text, default: Optional[Any] = None,
@@ -50,32 +58,6 @@ class ActionBotfrontForm(Action):
             if s.get("name") == slot:
                 return s.get(field, default)
         return default
-
-    async def validate_prefilled(
-        self,
-        output_channel: "OutputChannel",
-        nlg: "NaturalLanguageGenerator",
-        tracker: "DialogueStateTracker",
-        domain: "Domain",
-    ):
-        # collect values of required slots filled before activation
-        prefilled_slots = {}
-        events = []
-
-        for slot_name in self.required_slots(tracker):
-            if not self._should_request_slot(tracker, slot_name):
-                prefilled_slots[slot_name] = tracker.get_slot(slot_name)
-
-        if prefilled_slots:
-            logger.debug(f"Validating pre-filled required slots: {prefilled_slots}")
-            events.extend(
-                await self.validate_slots(
-                    prefilled_slots, output_channel, nlg, tracker, domain
-                )
-            )
-        else:
-            logger.debug("No pre-filled required slots to validate.")
-        return events
 
     async def run(
         self,
@@ -148,7 +130,8 @@ class ActionBotfrontForm(Action):
             template = await nlg.generate(
                 f"utter_submit_{self.name()}", tracker, output_channel.name(),
             )
-            events += [create_bot_utterance(template)]
+            if template:
+                events += [create_bot_utterance(template)]
         if collect_in_botfront:
             submit_form_to_botfront(tracker)
         return events
@@ -220,11 +203,13 @@ class ActionBotfrontForm(Action):
 
     @staticmethod
     def get_entity_value(
-        name: Text,
+        name: Optional[Text],
         tracker: "DialogueStateTracker",
         role: Optional[Text] = None,
         group: Optional[Text] = None,
     ) -> Any:
+        if not name:
+            return None
         # list is used to cover the case of list slot type
         value = list(
             tracker.get_latest_entity_values(name, entity_group=group, entity_role=role)
@@ -244,6 +229,8 @@ class ActionBotfrontForm(Action):
         domain: "Domain",
     ) -> Dict[Text, Any]:
         slot_to_fill = tracker.get_slot(REQUESTED_SLOT)
+        if not slot_to_fill:
+            return {}
 
         slot_values = {}
         for slot in self.required_slots(tracker):
@@ -298,6 +285,8 @@ class ActionBotfrontForm(Action):
             else return None
         """
         slot_to_fill = tracker.get_slot(REQUESTED_SLOT)
+        if not slot_to_fill:
+            return {}
         logger.debug(f"Trying to extract requested slot '{slot_to_fill}' ...")
 
         # get mapping for requested slot
@@ -350,14 +339,16 @@ class ActionBotfrontForm(Action):
             and self.get_field_for_slot(slot, "utter_on_new_valid_slot", False) is False
         ):
             return []
-        valid = "valid" if valid else "invalid"
+        utter_what = "valid" if valid else "invalid"
 
         # so utter_(in)valid_slot supports {slot} template replacements
         temp_tracker = tracker.copy()
         temp_tracker.slots[slot].value = value
         template = await nlg.generate(
-            f"utter_{valid}_{slot}", temp_tracker, output_channel.name(),
+            f"utter_{utter_what}_{slot}", temp_tracker, output_channel.name(),
         )
+        if not template:
+            return []
         return [create_bot_utterance(template)]
 
     async def validate_slots(
