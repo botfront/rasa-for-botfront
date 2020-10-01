@@ -23,6 +23,7 @@ import rasa.shared.utils.common
 import rasa.shared.utils.io
 import rasa.utils.endpoints
 import rasa.utils.io
+import rasa.shared.data
 from rasa.shared.core.training_data.story_writer.yaml_story_writer import (
     YAMLStoryWriter,
 )
@@ -1067,58 +1068,104 @@ def create_app(
                 f"header.",
             )
 
-    @app.post("/data/convert")
+    @app.post("/data/convert/<data_type>")
     @requires_auth(app, auth_token)
-    async def post_data_convert(request: Request):
-        """Converts current domain in yaml or json format."""
-        validate_request_body(
-            request,
-            "You must provide training data in the request body in order to "
-            "train your model.",
+    async def post_data_convert(request: Request, data_type: Text):
+        """Converts Core/NLU training data between JSON/YAML/Markdown."""
+        data, input_format, output_format, language = _parse_convert_request(
+            request, data_type
         )
-        rjs = request.json
-
-        if "data" not in rjs:
-            raise ErrorResponse(
-                400, "BadRequest", "Must provide training data in 'data' property"
-            )
-        if "output_format" not in rjs or rjs["output_format"] not in ["json", "md"]:
-            raise ErrorResponse(
-                400,
-                "BadRequest",
-                "'output_format' is required and must be either 'md' or 'json",
-            )
-        if "language" not in rjs:
-            raise ErrorResponse(400, "BadRequest", "'language' is required")
-
         temp_dir = tempfile.mkdtemp()
-        out_dir = tempfile.mkdtemp()
+        in_path = os.path.join(temp_dir, f"input.{input_format}")
+        out_path = os.path.join(temp_dir, f"output.{output_format}")
 
-        nlu_data_path = os.path.join(temp_dir, "nlu_data")
-        output_path = os.path.join(out_dir, "output")
-
-        if type(rjs["data"]) is dict:
-            rasa.shared.utils.io.dump_obj_as_json_to_file(nlu_data_path, rjs["data"])
+        if type(data) is dict:
+            rasa.shared.utils.io.dump_obj_as_json_to_file(in_path, data)
         else:
-            rasa.shared.utils.io.write_text_file(rjs["data"], nlu_data_path)
+            rasa.shared.utils.io.write_text_file(data, in_path)
 
-        from rasa.nlu.convert import convert_training_data
+        if data_type == "nlu":
+            await _convert_nlu_training_data(in_path, out_path, language)
+        else:
+            await _convert_core_training_data(in_path, out_path)
 
-        convert_training_data(
-            nlu_data_path, output_path, rjs["output_format"], rjs["language"]
-        )
-
-        with open(output_path, encoding="utf-8") as f:
-            data = f.read()
-
-        if rjs["output_format"] == "json":
-            import json
-
-            data = json.loads(data, encoding="utf-8")
+        if output_format == "json":
+            data = rasa.shared.utils.io.read_json_file(out_path)
+        else:
+            data = rasa.shared.utils.io.read_file(out_path)
 
         return response.json({"data": data})
 
     return app
+
+
+def _parse_convert_request(request: Request, data_type: Text):
+    validate_request_body(
+        request, "You must provide training data to convert.",
+    )
+    if data_type not in ["nlu", "core"]:
+        raise ErrorResponse(
+            400,
+            "BadRequest",
+            f"Expected data type 'nlu' or 'core', but got 'f{data_type}'.",
+        )
+    rjs = request.json
+    data = rjs.get("data")
+    input_format = rjs.get("input_format")
+    output_format = rjs.get("output_format")
+    supported_formats = ["md", "json", "yaml"] if data_type == "nlu" else ["yaml"]
+
+    if not data or not input_format or not output_format:
+        raise ErrorResponse(
+            400,
+            "BadRequest",
+            "You must provide training data in the request body, as well as an input and output format.",
+        )
+
+    if output_format not in supported_formats:
+        raise ErrorResponse(
+            400,
+            "BadRequest",
+            f"Could not recognize output format '{output_format}'. Supported output formats: {', '.join(supported_formats)}.",
+        )
+
+    return data, input_format, output_format, rjs.get("language", "en")
+
+
+async def _convert_nlu_training_data(
+    in_path: Text, out_path: Text, language: Text,
+):
+    if rasa.shared.data.is_likely_yaml_file(out_path):
+        from rasa.shared.nlu.training_data.loading import load_data
+        from rasa.shared.nlu.training_data.formats.rasa_yaml import RasaYAMLWriter
+
+        training_data = load_data(in_path, language)
+        RasaYAMLWriter().dump(out_path, training_data)
+    else:
+        from rasa.nlu.convert import convert_training_data
+
+        convert_training_data(
+            in_path, out_path, Path(out_path).suffix.replace('.', ''), language,
+        )
+
+
+async def _convert_core_training_data(
+    in_path: Text, out_path: Text,
+):
+    from rasa.shared.core.training_data.story_reader.markdown_story_reader import (
+        MarkdownStoryReader,
+    )
+    from rasa.shared.core.training_data.story_reader.yaml_story_reader import (
+        YAMLStoryReader,
+    )
+
+    reader = (
+        MarkdownStoryReader()
+        if rasa.shared.data.is_likely_markdown_file(in_path)
+        else YAMLStoryReader()
+    )
+    steps = reader.read_from_file(in_path)
+    YAMLStoryWriter().dump(out_path, steps)
 
 
 def _get_output_channel(
