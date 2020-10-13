@@ -110,10 +110,16 @@ class WebchatOutput(SocketIOOutput):
     ) -> None:
         """Sends custom json to the output"""
 
-        message = {
-            **json_message,
-            "metadata": kwargs.get("metadata", {}),
-        }
+        if isinstance(json_message, str):
+            message = {
+                "custom": json_message,
+                "metadata": kwargs.get("metadata", {}),
+            }
+        else:
+            message = {
+                **json_message,
+                "metadata": kwargs.get("metadata", {}),
+            }
         await self._send_message(recipient_id, message)
 
     async def send_attachment(
