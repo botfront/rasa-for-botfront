@@ -21,7 +21,7 @@ def require_response_keys(
             continue
 
         # bf =========
-        # if not response.get("text") and not response.get("custom"):
+        # if response.get("text") is None and not response.get("custom"):
         #     raise SchemaError("Missing 'text' or 'custom' key in response.")
 
     return True
