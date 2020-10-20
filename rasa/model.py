@@ -7,6 +7,7 @@ import shutil
 from subprocess import CalledProcessError, DEVNULL, check_output  # skipcq:BAN-B404
 import tempfile
 import typing
+from packaging import version
 from pathlib import Path
 from typing import Text, Tuple, Union, Optional, List, Dict, NamedTuple
 
@@ -23,6 +24,7 @@ from rasa.shared.constants import (
     DEFAULT_CORE_SUBDIRECTORY_NAME,
     DEFAULT_NLU_SUBDIRECTORY_NAME,
 )
+from rasa.constants import MINIMUM_COMPATIBLE_VERSION
 
 from rasa.core.utils import get_dict_hash
 from rasa.exceptions import ModelNotFound
@@ -336,7 +338,9 @@ async def model_fingerprint(file_importer: "TrainingDataImporter") -> Fingerprin
         FINGERPRINT_CONFIG_NLU_KEY: {
             lang: _get_hash_of_config(config, include_keys=CONFIG_KEYS_NLU)
             for (lang, config) in nlu_config.items()
-        } if len(nlu_config) else "",
+        }
+        if len(nlu_config)
+        else "",
         FINGERPRINT_DOMAIN_WITHOUT_NLG_KEY: hash(domain),
         FINGERPRINT_NLG_KEY: get_dict_hash(responses),
         FINGERPRINT_PROJECT: project_fingerprint(),
@@ -488,6 +492,10 @@ def should_retrain(
         last_fingerprint = fingerprint_from_path(unpacked)
         old_core, old_nlu = get_model_subdirectories(unpacked)
 
+        model_outdated = version.parse(last_fingerprint.get("version")) < version.parse(
+            MINIMUM_COMPATIBLE_VERSION
+        )
+
         fingerprint_comparison = FingerprintComparisonResult(
             core=did_section_fingerprint_change(
                 last_fingerprint, new_fingerprint, SECTION_CORE
@@ -498,6 +506,7 @@ def should_retrain(
             nlg=did_section_fingerprint_change(
                 last_fingerprint, new_fingerprint, SECTION_NLG
             ),
+            force_training=model_outdated,
         )
 
         core_merge_failed = False
