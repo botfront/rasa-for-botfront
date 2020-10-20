@@ -6,7 +6,7 @@ from rasa.shared.core.trackers import DialogueStateTracker
 from typing import Text, Any, Dict, Optional, List
 
 from rasa.core.nlg.generator import NaturalLanguageGenerator
-from rasa.core.nlg.interpolator import interpolate_text, interpolate
+from rasa.core.nlg import interpolator
 
 logger = logging.getLogger(__name__)
 
@@ -134,14 +134,16 @@ class BotfrontTemplatedNaturalLanguageGenerator(NaturalLanguageGenerator):
             "text",
             "image",
             "custom",
-            "button",
+            "buttons",
             "attachment",
             "quick_replies",
         ]
         if template_vars:
             for key in keys_to_interpolate:
                 if key in template:
-                    template[key] = interpolate(template[key], template_vars)
+                    template[key] = interpolator.interpolate(
+                        template[key], template_vars
+                    )
         return template
 
     @staticmethod
