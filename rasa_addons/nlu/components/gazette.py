@@ -72,9 +72,9 @@ class Gazette(Component):
         cached_component: Optional["Gazette"] = None,
         **kwargs: Any
     ) -> "Gazette":
-        td = rasa.shared.utils.io.read_yaml_file(os.path.join(model_dir, "training_data.yml"))
-        if "gazette" in td.get("nlu", {}):
-            gazette = cls._load_gazette_list(td["nlu"]["gazette"])
+        td = rasa.shared.utils.io.read_json_file(os.path.join(model_dir, "training_data.json"))
+        if "gazette" in td.get("rasa_nlu_data", {}):
+            gazette = cls._load_gazette_list(td["rasa_nlu_data"]["gazette"])
         else:
             gazette = None
             warnings.warn("Could not find Gazette in persisted training data file.")

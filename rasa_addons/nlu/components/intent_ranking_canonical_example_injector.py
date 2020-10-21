@@ -35,6 +35,8 @@ class IntentRankingCanonicalExampleInjector(Component):
         return frozenset((e.get("entity"), e.get("value")) for e in entities)
 
     def generate_canonicals(self, nlu_data):
+        # could be done by inspecting metadata of items, but here
+        # canonical-first order is assumed
         canonicals = {}
         for datum in nlu_data:
             intent, text, entities = (

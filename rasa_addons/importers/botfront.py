@@ -42,7 +42,7 @@ class BotfrontFileImporter(TrainingDataImporter):
                 self.nlu_config[lang] = {"pipeline": config["pipeline"], "language": lang}
     
     def path_for_nlu_lang(self, lang) -> List[Text]:
-        return [x for x in self._nlu_files if "{}.md".format(lang) in x]
+        return [x for x in self._nlu_files if "nlu/{}".format(lang) in x]
 
     async def get_config(self) -> Dict:
         return self.core_config

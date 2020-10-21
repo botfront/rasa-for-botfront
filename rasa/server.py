@@ -1247,16 +1247,16 @@ def _training_payload_from_json(request: Request) -> Dict[Text, Any]:
         os.mkdir(nlu_dir)
 
         for key in request_payload["nlu"].keys():
-            nlu_path = os.path.join(nlu_dir, "{}.md".format(key))
-            rasa.shared.utils.io.write_text_file(
-                request_payload["nlu"][key]["data"], nlu_path
+            nlu_path = os.path.join(nlu_dir, "{}.json".format(key))
+            rasa.shared.utils.io.dump_obj_as_json_to_file(
+                nlu_path, request_payload["nlu"][key]
             )
 
     # << bf
 
-    if "stories" in request_payload:
-        stories_path = os.path.join(temp_dir, "stories.md")
-        rasa.shared.utils.io.write_text_file(request_payload["stories"], stories_path)
+    if "fragments" in request_payload:
+        fragments_path = os.path.join(temp_dir, "fragments.yml")
+        rasa.shared.utils.io.write_text_file(request_payload["fragments"], fragments_path)
 
     if "responses" in request_payload:
         responses_path = os.path.join(temp_dir, "responses.md")
