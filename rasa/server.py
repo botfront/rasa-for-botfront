@@ -780,6 +780,11 @@ def create_app(
             for key in rjs["nlu"].keys():
                 nlu_path = os.path.join(nlu_dir, "{}.md".format(key))
                 rasa.utils.io.write_text_file(rjs["nlu"][key]["data"], nlu_path)
+   
+        if "augmentation_factor" in rjs:
+            augmentation_factor = rjs["augmentation_factor"]
+        else:
+            augmentation_factor = os.environ.get("AUGMENTATION_FACTOR", 50)
 
         # << bf
 
@@ -800,6 +805,7 @@ def create_app(
             model_output_directory = DEFAULT_MODELS_PATH
         else:
             model_output_directory = tempfile.gettempdir()
+            
 
         try:
             with app.active_training_processes.get_lock():
@@ -815,7 +821,7 @@ def create_app(
                 persist_nlu_training_data=True,  # bf
                 additional_arguments={
                     "augmentation_factor": int(
-                        os.environ.get("AUGMENTATION_FACTOR", 50)
+                       augmentation_factor
                     ),
                 },  # bf
             )
