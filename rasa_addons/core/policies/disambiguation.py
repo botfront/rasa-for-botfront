@@ -1,8 +1,6 @@
 import json
 import logging
 import os
-from rasa.core import interpreter
-from rasa.nlu.model import Interpreter
 from typing import Any, List, Text, Dict
 import rasa.shared.utils.io
 import re
@@ -13,6 +11,7 @@ from rasa.shared.core.domain import Domain
 from rasa.core.policies.policy import Policy, confidence_scores_for
 from rasa.shared.core.events import SlotSet
 from rasa.shared.core.trackers import DialogueStateTracker
+from rasa.shared.nlu.interpreter import NaturalLanguageInterpreter
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +37,7 @@ class BotfrontDisambiguationPolicy(Policy):
         self.fallback_default_confidence = 0.30
         self.disambiguation_action = "action_botfront_disambiguation"
         self.disambiguation_followup_action = "action_botfront_disambiguation_followup"
-        self.fallback_action = "action_botfront_fallback" # returns utter_fallback
+        self.fallback_action = "action_botfront_fallback"  # returns utter_fallback
         self.disambiguation_template = disambiguation_template
         self.excluded_intents = excluded_intents
         self.n_suggestions = n_suggestions
@@ -47,7 +46,7 @@ class BotfrontDisambiguationPolicy(Policy):
         self,
         training_trackers: List[DialogueStateTracker],
         domain: Domain,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> None:
         pass
 
@@ -143,7 +142,10 @@ class BotfrontDisambiguationPolicy(Policy):
         return tracker.last_executed_action_has(self.disambiguation_action)
 
     def predict_action_probabilities(
-        self, tracker: DialogueStateTracker, domain: Domain, interpreter: Interpreter,
+        self,
+        tracker: DialogueStateTracker,
+        domain: Domain,
+        interpreter: NaturalLanguageInterpreter,
     ) -> List[float]:
 
         parse_data = tracker.latest_message.parse_data

@@ -12,7 +12,7 @@ from rasa.core.actions.action import (
     ACTION_LISTEN_NAME,
     ACTION_RESTART_NAME,
 )
-from rasa.nlu.model import Interpreter
+from rasa.shared.nlu.interpreter import NaturalLanguageInterpreter
 from rasa.shared.core.constants import USER_INTENT_BACK, USER_INTENT_RESTART
 from rasa.shared.core.domain import Domain
 from rasa.shared.core.events import ActionExecuted
@@ -54,14 +54,17 @@ class BotfrontMappingPolicy(Policy):
         self,
         training_trackers: List[DialogueStateTracker],
         domain: Domain,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> None:
         """Does nothing. This policy is deterministic."""
 
         pass
 
     def predict_action_probabilities(
-        self, tracker: DialogueStateTracker, domain: Domain, interpreter: Interpreter,
+        self,
+        tracker: DialogueStateTracker,
+        domain: Domain,
+        interpreter: NaturalLanguageInterpreter,
     ) -> List[float]:
         logger.debug("Triggers: " + ", ".join(self.triggers.keys()))
         """Predicts the assigned action.
