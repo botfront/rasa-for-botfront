@@ -40,7 +40,7 @@ lastmile_ai/learn/plots/
 .venv/
 *.iml
 out/
-.vscode/
+.vscode/settings.json
 tmp_training_data.json
 .DS_Store
 models/
