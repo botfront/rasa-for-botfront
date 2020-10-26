@@ -4,6 +4,22 @@ A fork to be used with **Botfront**, an open source chatbot platform built with 
 
 For more information visit the [Botfront project on Github](https://github.com/botfront/botfront)
 
+## Installation
+
+```bash
+# start by cloning the repo
+cd rasa-for-botfront
+# Make sure you have installed miniconda
+conda create -n myenv python=3.7.7
+# Install poetry, https://python-poetry.org/docs/
+poetry install
+python addons_setup.py develop
+# make sure the cwd is right in .vscode/launch.json, it should point to your botfront project
+# you might have to remove the rasa folder in your botfront project, to do that safely, rename it
+# and then reference the new folder name in {project}/docker-compose.yml in the rasa build context and
+# in {project}/.botfront/docker-compose-template.yml in the rasa build context
+
+```
 
 # Rasa Addons
 
