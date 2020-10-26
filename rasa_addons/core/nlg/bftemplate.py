@@ -134,7 +134,7 @@ class BotfrontTemplatedNaturalLanguageGenerator(NaturalLanguageGenerator):
             "text",
             "image",
             "custom",
-            "button",
+            "buttons",
             "attachment",
             "quick_replies",
         ]
