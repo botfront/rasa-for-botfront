@@ -9,7 +9,8 @@
             "type": "python",
             "request": "launch",
             "module": "rasa",
-            "args": ["run", "-m", "/Users/matthieu/code/mrbot/test-ee2/models", "--debug", "--enable-api"],
+            "cwd": "/User/{yourUserName}/{bfProject}/models",
+            "args": ["run", "-m", "/User/{yourUserName}/{bfProject}/models", "--debug", "--enable-api"],
             "env": {
                 "BF_PROJECT_ID": "bf",
                 "BF_URL": "http://localhost:3000/graphql",

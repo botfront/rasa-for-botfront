@@ -16,8 +16,11 @@ poetry install
 python addons_setup.py develop
 
 ```
-Make sure the models path is properly set in `.vscode/launch.json`, it should point to the `models` folder in
-your botfront project.
+Make sure the cwd is properly set in `.vscode/launch.json`, it should point to your botfront project.
+
+You might have to remove the rasa folder in your botfront project, to do that safely, rename it
+and then reference the new folder name in `{project}/docker-compose.yml` in the rasa build context and
+in `{project}/.botfront/docker-compose-template.yml` in the rasa build context.
 
 Now you should be able to start the project from the vscode debugger, just go to the debugger tab and click the green play icon at the top.
 
