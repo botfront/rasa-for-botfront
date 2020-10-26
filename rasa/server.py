@@ -1252,11 +1252,16 @@ def _training_payload_from_json(request: Request) -> Dict[Text, Any]:
                 nlu_path, request_payload["nlu"][key]
             )
 
-    # << bf
+    if "augmentation_factor" in rjs:
+        augmentation_factor = rjs["augmentation_factor"]
+    else:
+        augmentation_factor = os.environ.get("AUGMENTATION_FACTOR", 50)
 
     if "fragments" in request_payload:
         fragments_path = os.path.join(temp_dir, "fragments.yml")
         rasa.shared.utils.io.write_text_file(request_payload["fragments"], fragments_path)
+
+    # << bf
 
     if "responses" in request_payload:
         responses_path = os.path.join(temp_dir, "responses.md")
@@ -1287,7 +1292,7 @@ def _training_payload_from_json(request: Request) -> Dict[Text, Any]:
         fixed_model_name=request_payload.get("fixed_model_name"),  # bf
         persist_nlu_training_data=True,  # bf
         core_additional_arguments={
-            "augmentation_factor": int(os.environ.get("AUGMENTATION_FACTOR", 50)),
+            "augmentation_factor": augmentation_factor,
         },  # bf
     )
 
