@@ -2,6 +2,23 @@
 
 .. towncrier release notes start
 
+[1.10.16-bf.1] - 2020-10-27
+^^^^^^^^^^^^^^^^^^^^^
+
+Improvements
+--------
+- `#32 <https://github.com/botfront/rasa-for-botfront/pull/32>`_: Move graphql slot interpolation to Rasa.
+- `#29 <https://github.com/botfront/rasa-for-botfront/pull/29>`_: Add support for the augmentation factor in the train route.
+
+
+[1.10.10-bf.4] - 2020-09-18
+^^^^^^^^^^^^^^^^^^^^^
+
+Features
+--------
+- `#28 <https://github.com/botfront/rasa-for-botfront/pull/28>`_: Determine required slots programmatically from graph.
+
+
 [1.10.10-bf.3] - 2020-08-19
 ^^^^^^^^^^^^^^^^^^^^^
 
