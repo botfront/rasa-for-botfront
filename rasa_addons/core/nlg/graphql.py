@@ -7,6 +7,7 @@ from rasa.shared.core.trackers import DialogueStateTracker, EventVerbosity
 from rasa.utils.endpoints import EndpointConfig
 import os
 import urllib.error
+from rasa.core.nlg.interpolator import interpolate
 
 logger = logging.getLogger(__name__)
 
@@ -172,6 +173,18 @@ class GraphQLNaturalLanguageGenerator(NaturalLanguageGenerator):
                 metadata = response.pop("metadata", {}) or {}
                 for key in metadata:
                     response[key] = metadata[key]
+
+                keys_to_interpolate = [
+                    "text",
+                    "image",
+                    "custom",
+                    "buttons",
+                    "attachment",
+                    "quick_replies",
+                ]
+                for key in keys_to_interpolate:
+                    if key in response:
+                        response[key] = interpolate(response[key], tracker.current_slot_values())
             else:
                 response = await self.nlg_endpoint.request(
                     method="post", json=body, timeout=DEFAULT_REQUEST_TIMEOUT
