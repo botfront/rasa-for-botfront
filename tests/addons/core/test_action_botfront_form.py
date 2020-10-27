@@ -118,6 +118,32 @@ def required_slots_graph(conjunction="OR", negated=False):
         ],
     }
 
+def required_slots_graph_with_set_slots(conjunction="OR", negated=False):
+    return {
+        "nodes": [
+            *(required_slots_graph(conjunction, negated).get("nodes")),
+            {"id": "4", "type": "slotSet", "slotName": "finished", "slotValue": False},
+            {"id": "5", "type": "slotSet", "slotName": "finished", "slotValue": True},
+        ],
+        "edges": [
+            *(required_slots_graph(conjunction, negated).get("edges")),
+            {
+                "id": "e",
+                "type": "condition",
+                "source": "2",
+                "target": "4",
+                "condition": None,
+            },
+            {
+                "id": "f",
+                "type": "condition",
+                "source": "3",
+                "target": "5",
+                "condition": None,
+            },
+        ],
+    }
+
 
 def test_extract_requested_slot_default():
     """Test default extraction of a slot value from entity with the same name
@@ -280,7 +306,6 @@ def test_extract_requested_slot_from_text_with_not_intent():
     )
     assert slot_values == {"some_slot": "some_text"}
 
-
 @pytest.mark.parametrize(
     "operator, value, comparatum, result",
     [
@@ -389,4 +414,75 @@ async def test_required_slots(graph, age, authorization_req):
         *(["authorization"] if authorization_req else []),
         # now comments is always required
         "comments"
+    ]
+
+@pytest.mark.parametrize(
+    "graph, age, authorization_req",
+    [
+        # under 18 or over 65
+        (required_slots_graph_with_set_slots("OR", False), 17, True),
+        (required_slots_graph_with_set_slots("OR", False), 30, False),
+        (required_slots_graph_with_set_slots("OR", False), 66, True),
+        # at least 18 and at most 65
+        (required_slots_graph_with_set_slots("OR", True), 17, False),
+        (required_slots_graph_with_set_slots("OR", True), 30, True),
+        (required_slots_graph_with_set_slots("OR", True), 66, False),
+        # under 18 and over 65 (contradiction)
+        (required_slots_graph_with_set_slots("AND", False), 17, False),
+        (required_slots_graph_with_set_slots("AND", False), 30, False),
+        (required_slots_graph_with_set_slots("AND", False), 66, False),
+        # at least 18 or at most 65 (tautology)
+        (required_slots_graph_with_set_slots("AND", True), 17, True),
+        (required_slots_graph_with_set_slots("AND", True), 30, True),
+        (required_slots_graph_with_set_slots("AND", True), 66, True),
+    ],
+)
+async def test_required_slots_with_set_slots(graph, age, authorization_req):
+    """
+        (start)
+        |
+        AGE --- fail age condition --- AUTHORIZATION --- fail authorization
+        |                               |                       condition
+        |                               pass authorization          |
+        pass age condition              condition                   |
+        |                               /                           (setSlot finished=False)
+        |                              /                           
+        COMMENTS ---------------------                           
+        |                                                       
+        (setSlot finished=True)
+    """
+
+    spec = {"name": "default_form", "graph_elements": graph}
+
+    form, tracker = new_form_and_tracker(
+        spec, "age", ["authorization", "comments"]
+    )
+    tracker.update(SlotSet("age", age))
+
+    # first test with no authorization
+    tracker.update(SlotSet("authorization", "false"))
+
+    def get_finished_set_slot(value: bool):
+        return {
+            "name": "finished",
+            "type": "slotSet",
+            "value": value,
+        }
+
+    assert form.required_slots(tracker) == [
+        "age",
+        *(["authorization"] if authorization_req else []),
+        # here comments is only required if authorization is not required
+        *(["comments"] if not authorization_req else []),
+        *([get_finished_set_slot(False)] if authorization_req else [get_finished_set_slot(True)])
+    ]
+
+    # then with authorization
+    tracker.update(SlotSet("authorization", "true"))
+    assert form.required_slots(tracker) == [
+        "age",
+        *(["authorization"] if authorization_req else []),
+        # now comments is always required
+        "comments",
+        get_finished_set_slot(True),
     ]
