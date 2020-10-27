@@ -62,6 +62,8 @@ def interpolate(
     """
     if isinstance(template, str):
         return interpolate_text(template, values)
+    elif isinstance(template, list):
+        [interpolate(i, values) for i in template]
     elif isinstance(template, dict):
         for k, v in template.items():
             if isinstance(v, dict):
