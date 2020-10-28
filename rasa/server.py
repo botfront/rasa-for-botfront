@@ -1292,7 +1292,7 @@ def _training_payload_from_json(request: Request) -> Dict[Text, Any]:
         fixed_model_name=request_payload.get("fixed_model_name"),  # bf
         persist_nlu_training_data=True,  # bf
         core_additional_arguments={
-            "augmentation_factor": augmentation_factor,
+            "augmentation_factor": int(augmentation_factor),
         },  # bf
     )
 
