@@ -1252,8 +1252,8 @@ def _training_payload_from_json(request: Request) -> Dict[Text, Any]:
                 nlu_path, request_payload["nlu"][key]
             )
 
-    if "augmentation_factor" in rjs:
-        augmentation_factor = rjs["augmentation_factor"]
+    if "augmentation_factor" in request_payload:
+        augmentation_factor = request_payload["augmentation_factor"]
     else:
         augmentation_factor = os.environ.get("AUGMENTATION_FACTOR", 50)
 
