@@ -356,27 +356,43 @@ async def test_validation(value, operator, comparatum, result, caplog):
 
 
 @pytest.mark.parametrize(
-    "graph, age, authorization_req",
+    "graph, age, authorization_req, with_slots",
     [
         # under 18 or over 65
-        (required_slots_graph("OR", False), 17, True),
-        (required_slots_graph("OR", False), 30, False),
-        (required_slots_graph("OR", False), 66, True),
+        (required_slots_graph("OR", False), 17, True, False),
+        (required_slots_graph("OR", False), 30, False, False),
+        (required_slots_graph("OR", False), 66, True, False),
         # at least 18 and at most 65
-        (required_slots_graph("OR", True), 17, False),
-        (required_slots_graph("OR", True), 30, True),
-        (required_slots_graph("OR", True), 66, False),
+        (required_slots_graph("OR", True), 17, False, False),
+        (required_slots_graph("OR", True), 30, True, False),
+        (required_slots_graph("OR", True), 66, False, False),
         # under 18 and over 65 (contradiction)
-        (required_slots_graph("AND", False), 17, False),
-        (required_slots_graph("AND", False), 30, False),
-        (required_slots_graph("AND", False), 66, False),
+        (required_slots_graph("AND", False), 17, False, False),
+        (required_slots_graph("AND", False), 30, False, False),
+        (required_slots_graph("AND", False), 66, False, False),
         # at least 18 or at most 65 (tautology)
-        (required_slots_graph("AND", True), 17, True),
-        (required_slots_graph("AND", True), 30, True),
-        (required_slots_graph("AND", True), 66, True),
+        (required_slots_graph("AND", True), 17, True, False),
+        (required_slots_graph("AND", True), 30, True, False),
+        (required_slots_graph("AND", True), 66, True, False),
+
+        (required_slots_graph_with_set_slots("OR", False), 17, True, True),
+        (required_slots_graph_with_set_slots("OR", False), 30, False, True),
+        (required_slots_graph_with_set_slots("OR", False), 66, True, True),
+        # at least 18 and at most 65
+        (required_slots_graph_with_set_slots("OR", True), 17, False, True),
+        (required_slots_graph_with_set_slots("OR", True), 30, True, True),
+        (required_slots_graph_with_set_slots("OR", True), 66, False, True),
+        # under 18 and over 65 (contradiction)
+        (required_slots_graph_with_set_slots("AND", False), 17, False, True),
+        (required_slots_graph_with_set_slots("AND", False), 30, False, True),
+        (required_slots_graph_with_set_slots("AND", False), 66, False, True),
+        # at least 18 or at most 65 (tautology)
+        (required_slots_graph_with_set_slots("AND", True), 17, True, True),
+        (required_slots_graph_with_set_slots("AND", True), 30, True, True),
+        (required_slots_graph_with_set_slots("AND", True), 66, True, True),
     ],
 )
-async def test_required_slots(graph, age, authorization_req):
+async def test_required_slots_with_set_slots(graph, age, authorization_req, with_slots):
     """
         (start)
         |
@@ -384,72 +400,11 @@ async def test_required_slots(graph, age, authorization_req):
         |                               |                       condition
         |                               pass authorization          |
         pass age condition              condition                   |
-        |                               /                           |
-        |                              /                           /
-        COMMENTS ----------------------                           /
-        |                                                        /
-        (end) ---------------------------------------------------
-    """
-
-    spec = {"name": "default_form", "graph_elements": graph}
-
-    form, tracker = new_form_and_tracker(
-        spec, "age", ["authorization", "comments"]
-    )
-    tracker.update(SlotSet("age", age))
-
-    # first test with no authorization
-    tracker.update(SlotSet("authorization", "false"))
-    assert form.required_slots(tracker) == [
-        "age",
-        *(["authorization"] if authorization_req else []),
-        # here comments is only required if authorization is not required
-        *(["comments"] if not authorization_req else [])
-    ]
-
-    # then with authorization
-    tracker.update(SlotSet("authorization", "true"))
-    assert form.required_slots(tracker) == [
-        "age",
-        *(["authorization"] if authorization_req else []),
-        # now comments is always required
-        "comments"
-    ]
-
-@pytest.mark.parametrize(
-    "graph, age, authorization_req",
-    [
-        # under 18 or over 65
-        (required_slots_graph_with_set_slots("OR", False), 17, True),
-        (required_slots_graph_with_set_slots("OR", False), 30, False),
-        (required_slots_graph_with_set_slots("OR", False), 66, True),
-        # at least 18 and at most 65
-        (required_slots_graph_with_set_slots("OR", True), 17, False),
-        (required_slots_graph_with_set_slots("OR", True), 30, True),
-        (required_slots_graph_with_set_slots("OR", True), 66, False),
-        # under 18 and over 65 (contradiction)
-        (required_slots_graph_with_set_slots("AND", False), 17, False),
-        (required_slots_graph_with_set_slots("AND", False), 30, False),
-        (required_slots_graph_with_set_slots("AND", False), 66, False),
-        # at least 18 or at most 65 (tautology)
-        (required_slots_graph_with_set_slots("AND", True), 17, True),
-        (required_slots_graph_with_set_slots("AND", True), 30, True),
-        (required_slots_graph_with_set_slots("AND", True), 66, True),
-    ],
-)
-async def test_required_slots_with_set_slots(graph, age, authorization_req):
-    """
-        (start)
-        |
-        AGE --- fail age condition --- AUTHORIZATION --- fail authorization
-        |                               |                       condition
-        |                               pass authorization          |
-        pass age condition              condition                   |
-        |                               /                           (setSlot finished=False)
+        |                               /                           if with_slots (setSlot finished=False)
         |                              /                           
         COMMENTS ---------------------                           
         |                                                       
-        (setSlot finished=True)
+        if with_slots (setSlot finished=True)
     """
 
     spec = {"name": "default_form", "graph_elements": graph}
@@ -469,12 +424,18 @@ async def test_required_slots_with_set_slots(graph, age, authorization_req):
             "value": value,
         }
 
+    def get_last_required_slot():
+        if with_slots:
+            return [get_finished_set_slot(False)] if authorization_req else [get_finished_set_slot(True)]
+        else:
+            return []
+
     assert form.required_slots(tracker) == [
         "age",
         *(["authorization"] if authorization_req else []),
         # here comments is only required if authorization is not required
         *(["comments"] if not authorization_req else []),
-        *([get_finished_set_slot(False)] if authorization_req else [get_finished_set_slot(True)])
+        *(get_last_required_slot())
     ]
 
     # then with authorization
@@ -484,5 +445,5 @@ async def test_required_slots_with_set_slots(graph, age, authorization_req):
         *(["authorization"] if authorization_req else []),
         # now comments is always required
         "comments",
-        get_finished_set_slot(True),
+        *([get_finished_set_slot(True)] if with_slots else [])
     ]

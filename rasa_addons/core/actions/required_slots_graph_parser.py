@@ -26,11 +26,11 @@ class RequiredSlotsGraphParser:
         for edge in sorted(current_edges, key=lambda e: e.get("condition") is None):
             target, condition = edge.get("target"), edge.get("condition")
             if self.check_condition(tracker, condition):
-                targetNode = self.nodes.get(target)
+                target_node = self.nodes.get(target)
                 ## if the remaining required slot is of slot set type, we set that slot and get out.
-                if targetNode.get("type") == "slotSet":
-                    return [targetNode]
-                required_slots.append(targetNode.get("name"))
+                if target_node.get("type") == "slotSet":
+                    return [target_node]
+                required_slots.append(target_node.get("name"))
                 required_slots += self.get_required_slots(tracker, start=target)
                 break # use first matching condition, that's it
             else:

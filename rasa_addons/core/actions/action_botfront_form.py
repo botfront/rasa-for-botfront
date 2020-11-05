@@ -497,9 +497,9 @@ class ActionBotfrontForm(Action):
         prefilled_slots = {}
         events = []
 
-        requiredSlots = self._requested_slot_without_slot_set(tracker)
+        required_slots = self._requested_slot_without_slot_set(tracker)
 
-        for slot_name in requiredSlots:
+        for slot_name in required_slots:
             if not self._should_request_slot(tracker, slot_name):
                 prefilled_slots[slot_name] = tracker.get_slot(slot_name)
 
