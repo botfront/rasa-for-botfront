@@ -114,5 +114,7 @@ class BotfrontFileImporter(TrainingDataImporter):
                     + domain.form_names
                 )
             ##
+        except Exception as e:
+            logger.warning(e)
         finally:
             return domain
