@@ -1,7 +1,6 @@
 from typing import Dict, Text, Any
 from rasa_addons.core.actions.slot_rule_validator import validate_with_rule
 
-
 class RequiredSlotsGraphParser:
     def __init__(self, required_slots_graph: Dict[Text, Any]) -> None:
         self.start = None
@@ -10,7 +9,11 @@ class RequiredSlotsGraphParser:
             if node.get("type") == "start":
                 self.start = node.get("id")
                 continue
-            self.nodes[node.get("id")] = node.get("slotName")
+            self.nodes[node.get("id")] = {
+                "name": node.get("slotName"),
+                "type": node.get("type"),
+                "value": node.get("slotValue"),
+            }
         self.edges = {}
         for edge in required_slots_graph.get("edges", []):
             source = edge.get("source")
@@ -23,7 +26,11 @@ class RequiredSlotsGraphParser:
         for edge in sorted(current_edges, key=lambda e: e.get("condition") is None):
             target, condition = edge.get("target"), edge.get("condition")
             if self.check_condition(tracker, condition):
-                required_slots.append(self.nodes.get(target))
+                target_node = self.nodes.get(target)
+                ## if the remaining required slot is of slot set type, we set that slot and get out.
+                if target_node.get("type") == "slotSet":
+                    return [target_node]
+                required_slots.append(target_node.get("name"))
                 required_slots += self.get_required_slots(tracker, start=target)
                 break # use first matching condition, that's it
             else:
