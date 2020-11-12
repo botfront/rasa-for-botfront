@@ -299,7 +299,7 @@ class ActionBotfrontForm(Action):
         requested_slot_mappings = self.get_mappings_for_slot(slot_to_fill)
 
         if len(requested_slot_mappings) == 0:
-            requested_slot_mappings = [{ 'type': 'from_text'}]
+            requested_slot_mappings = [{"type": "from_text"}]
 
         for requested_slot_mapping in requested_slot_mappings:
             logger.debug(f"Got mapping '{requested_slot_mapping}'")
