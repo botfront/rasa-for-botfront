@@ -97,11 +97,7 @@ class ActionBotfrontForm(Action):
                 output_channel, nlg, temp_tracker, domain
             )
 
-            if next_slot_events is not None:
-                # request next slot
-                events.extend(next_slot_events)
-            else:
-                # there is nothing more to request, so we can submit
+            async def prepare_submit_and_submit():
                 self._log_form_slots(temp_tracker)
                 logger.debug(f"Submitting the form '{self.name()}'")
                 events.extend(
@@ -109,6 +105,17 @@ class ActionBotfrontForm(Action):
                 )
                 # deactivate the form after submission
                 events.extend(self.deactivate())
+
+            if len(next_slot_events) == 1 and type(next_slot_events[0]) is SlotSet:
+                # we only want to set a slot so we can submit
+                events.extend(next_slot_events)
+                await prepare_submit_and_submit()
+            if next_slot_events is not None:
+                # request next slot
+                events.extend(next_slot_events)
+            else:
+                # there is nothing more to request, so we can submit
+                await prepare_submit_and_submit()
 
         return events
 
@@ -425,6 +432,8 @@ class ActionBotfrontForm(Action):
             else return None"""
 
         for slot in self.required_slots(tracker):
+            if type(slot) is dict:
+                return [SlotSet(slot.get("name"), slot.get("value"))]
             if self._should_request_slot(tracker, slot):
 
                 template = await nlg.generate(
@@ -438,10 +447,11 @@ class ActionBotfrontForm(Action):
 
     def _log_form_slots(self, tracker) -> None:
         """Logs the values of all required slots before submitting the form."""
+        required_slots = self._requested_slot_without_slot_set(tracker)
         slot_values = "\n".join(
             [
                 f"\t{slot}: {tracker.get_slot(slot)}"
-                for slot in self.required_slots(tracker)
+                for slot in required_slots
             ]
         )
         logger.debug(
@@ -481,7 +491,9 @@ class ActionBotfrontForm(Action):
         prefilled_slots = {}
         events = []
 
-        for slot_name in self.required_slots(tracker):
+        required_slots = self._requested_slot_without_slot_set(tracker)
+
+        for slot_name in required_slots:
             if not self._should_request_slot(tracker, slot_name):
                 prefilled_slots[slot_name] = tracker.get_slot(slot_name)
 
@@ -512,6 +524,10 @@ class ActionBotfrontForm(Action):
             logger.debug("Skipping validation")
             return []
 
+    def _requested_slot_without_slot_set(self, tracker: "DialogueStateTracker") -> List:
+        return filter(lambda slot: not type(slot) is dict ,self.required_slots(tracker))
+
     @staticmethod
     def _should_request_slot(tracker: "DialogueStateTracker", slot_name: Text) -> bool:
         return tracker.get_slot(slot_name) is None
+    
