@@ -2,6 +2,18 @@
 
 .. towncrier release notes start
 
+[1.10.16-bf.2] - 2020-11-12
+^^^^^^^^^^^^^^^^^^^^^
+
+Bugfixes
+--------
+- `#34 <https://github.com/botfront/rasa-for-botfront/pull/34>`_: Use "from_text" extraction when none specified.
+
+Features
+--------
+- `#33 <https://github.com/botfront/rasa-for-botfront/pull/33>`_: Allow setting a slot at the end of a form.
+
+
 [1.10.16-bf.1] - 2020-10-27
 ^^^^^^^^^^^^^^^^^^^^^
 
