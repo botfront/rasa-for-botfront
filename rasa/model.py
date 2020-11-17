@@ -526,8 +526,11 @@ def should_retrain(
         languages_to_train = fingerprint_comparison.should_retrain_nlu()
         for lang in old_nlu.keys():
             target_path = os.path.join(train_path, "nlu-{}".format(lang))
-            if not move_model(old_nlu.get(lang), target_path):
-                languages_to_train.append(lang)
+            if lang in new_fingerprint.get("nlu-config").keys():
+                # only attempt move if language is still in new fingerprints
+                # that way new model will not include that old lang
+                if not move_model(old_nlu.get(lang), target_path):
+                    languages_to_train.append(lang)
         fingerprint_comparison.nlu = languages_to_train
         # </ bf mod
 
