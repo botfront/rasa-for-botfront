@@ -1091,6 +1091,17 @@ def create_app(
 
         if output_format == "json":
             data = rasa.shared.utils.io.read_json_file(out_path)
+            if data_type == "nlu":
+                # rasa has a weird structured way to manage metadata so we flatten it
+                examples_with_proper_metadata = []
+                for example in data.get("rasa_nlu_data").get("common_examples", []):
+                    metadata = example.pop("metadata", {})
+                    metadata.update(metadata.pop("intent", {}))
+                    metadata.update(metadata.pop("example", {}))
+                    examples_with_proper_metadata.append({
+                        **example, "metadata": metadata
+                    })
+                data["rasa_nlu_data"]["common_examples"] = examples_with_proper_metadata
         else:
             data = rasa.shared.utils.io.read_file(out_path)
 
