@@ -123,7 +123,7 @@ class BotfrontMappingPolicy(Policy):
         config_file = os.path.join(path, "botfront_mapping_policy.json")
         meta = {"priority": self.priority, "triggers": self.triggers}
         rasa.shared.utils.io.create_directory_for_file(config_file)
-        rasa.shared.__name__utils.io.dump_obj_as_json_to_file(config_file, meta)
+        rasa.shared.utils.io.dump_obj_as_json_to_file(config_file, meta)
 
     @classmethod
     def load(cls, path: Text) -> "BotfrontMappingPolicy":

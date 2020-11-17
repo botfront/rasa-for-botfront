@@ -5,6 +5,7 @@ import rasa
 from typing import Any, Text, Dict, Optional
 
 import rasa.shared.utils.io
+from rasa.nlu import utils
 from rasa.nlu.components import Component
 from rasa.nlu.config import RasaNLUModelConfig
 from rasa.shared.nlu.training_data.message import Message
@@ -61,8 +62,20 @@ class Gazette(Component):
     def train(
         self, training_data: TrainingData, cfg: RasaNLUModelConfig, **kwargs: Any
     ) -> None:
-        self.gazette = self._load_gazette_list(training_data.gazette)
+        gazette_dict = {}
+        if hasattr(training_data, "gazette") and type(training_data.gazette) == list:
+            for item in training_data.gazette:
+                name = item["value"]
+                table = item["gazette"]
+                gazette_dict[name] = table
+            self.gazette = gazette_dict
 
+    def persist(self, file_name: Text, model_dir: Text) -> Optional[Dict[Text, Any]]:
+        file_name = file_name + ".json"
+        utils.write_json_to_file(os.path.join(model_dir, file_name), self.gazette, indent=4)
+
+        return {"file": file_name}
+    
     @classmethod
     def load(
         cls,
@@ -72,23 +85,12 @@ class Gazette(Component):
         cached_component: Optional["Gazette"] = None,
         **kwargs: Any
     ) -> "Gazette":
-        td = rasa.shared.utils.io.read_json_file(os.path.join(model_dir, "training_data.json"))
-        if "gazette" in td.get("rasa_nlu_data", {}):
-            gazette = cls._load_gazette_list(td["rasa_nlu_data"]["gazette"])
-        else:
-            gazette = None
-            warnings.warn("Could not find Gazette in persisted training data file.")
-
-        return Gazette(component_meta, gazette)
-
-    @staticmethod
-    def _load_gazette_list(gazette: Optional[Dict]) -> Dict:
-        gazette_dict = {}
-        for item in gazette:
-            name = item["value"]
-            table = item["gazette"]
-            gazette_dict[name] = table
-        return gazette_dict
+        try:
+            file = os.path.join(model_dir, component_meta.get("file", "gazette.json"))
+            return Gazette(component_meta, rasa.shared.utils.io.read_json_file(file))
+        except:
+            warnings.warn("Could not load gazette.")
+            return Gazette(component_meta, None)
 
     @staticmethod
     def _find_entity(entity, entities):
