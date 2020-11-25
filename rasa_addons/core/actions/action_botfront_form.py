@@ -106,13 +106,12 @@ class ActionBotfrontForm(Action):
                 # deactivate the form after submission
                 events.extend(self.deactivate())
 
-            if len(next_slot_events) == 1 and type(next_slot_events[0]) is SlotSet:
-                # we only want to set a slot so we can submit
-                events.extend(next_slot_events)
-                await prepare_submit_and_submit()
             if next_slot_events is not None:
                 # request next slot
                 events.extend(next_slot_events)
+                if len(next_slot_events) == 1 and type(next_slot_events[0]) is SlotSet:
+                    # we only want to set a slot so we can submit
+                    await prepare_submit_and_submit()
             else:
                 # there is nothing more to request, so we can submit
                 await prepare_submit_and_submit()
