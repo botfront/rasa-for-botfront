@@ -168,14 +168,6 @@ def action_from_name(
 ) -> "Action":
     """Return an action instance for the name."""
 
-    # bf
-    bf_forms = []
-    if domain:
-        for slot in domain.slots or []:
-            if slot.name == "bf_forms": bf_forms = slot.initial_value
-        bf_forms = [f.get("name") for f in bf_forms]
-    # /bf
-
     defaults = {a.name(): a for a in default_actions(action_endpoint)}
 
     if name in defaults and name not in user_actions:
@@ -187,7 +179,7 @@ def action_from_name(
     elif name.startswith(UTTER_PREFIX):
         return ActionUtterTemplate(name)
     # bf >
-    elif name.endswith("_form") and any(form == name for form in bf_forms):
+    elif domain.forms.get(name, {}).get("graph_elements") is not None:
         return generate_bf_form_action(name)
     elif name in actions_bf:
         return actions_bf[name]

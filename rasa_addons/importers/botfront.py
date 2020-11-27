@@ -33,14 +33,19 @@ class BotfrontFileImporter(TrainingDataImporter):
         self.core_config = {}
         self.nlu_config = {}
         if config_file:
-            if not isinstance(config_file, list): config_file = [config_file]
+            if not isinstance(config_file, list):
+                config_file = [config_file]
             for file in config_file:
-                if not os.path.exists(file): continue
+                if not os.path.exists(file):
+                    continue
                 config = rasa.shared.utils.io.read_config_file(file)
                 lang = config["language"]
                 self.core_config = {"policies": config["policies"]}
-                self.nlu_config[lang] = {"pipeline": config["pipeline"], "language": lang}
-    
+                self.nlu_config[lang] = {
+                    "pipeline": config["pipeline"],
+                    "language": lang,
+                }
+
     def path_for_nlu_lang(self, lang) -> List[Text]:
         return [x for x in self._nlu_files if "nlu/{}".format(lang) in x]
 
@@ -93,27 +98,17 @@ class BotfrontFileImporter(TrainingDataImporter):
             except ValueError as e:
                 if str(e).startswith("Unknown data format"):
                     td[lang] = TrainingData()
-        if language: return td.get(language, TrainingData())
+        if language:
+            return td.get(language, TrainingData())
         return td
 
     async def get_domain(self) -> Domain:
         domain = Domain.empty()
-        if not self._domain_path: return domain
+        if not self._domain_path:
+            return domain
         try:
             domain = Domain.load(self._domain_path)
             domain.check_missing_templates()
-            ## legacy form injection
-            bf_forms = []
-            for slot in domain.slots:
-                if slot.name == "bf_forms": bf_forms = slot.initial_value
-            if bf_forms:
-                domain.forms = {form.get("name"): form for form in bf_forms}
-                domain.form_names = list(domain.forms.keys())
-                domain.action_names = (
-                    domain._combine_user_with_default_actions(domain.user_actions)
-                    + domain.form_names
-                )
-            ##
         except Exception as e:
             logger.warning(e)
         finally:
