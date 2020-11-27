@@ -1077,7 +1077,7 @@ def create_app(
         )
         temp_dir = tempfile.mkdtemp()
         in_path = os.path.join(temp_dir, f"input.{input_format}")
-        out_path = os.path.join(temp_dir, f"output.{output_format}")
+        out_path = os.path.join(temp_dir, f"input_converted.{output_format}")
 
         if type(data) is dict:
             rasa.shared.utils.io.dump_obj_as_json_to_file(in_path, data)
@@ -1124,7 +1124,9 @@ def _parse_convert_request(request: Request, data_type: Text):
     data = rjs.get("data")
     input_format = rjs.get("input_format")
     output_format = rjs.get("output_format")
-    supported_formats = ["md", "json", "yaml"] if data_type == "nlu" else ["yaml"]
+    supported_formats = ["md", "json", "yaml", "yml"] if data_type == "nlu" else ["yaml", "yml"]
+    if output_format == "yaml":
+        output_format = "yml"
 
     if not data or not input_format or not output_format:
         raise ErrorResponse(
@@ -1163,20 +1165,18 @@ async def _convert_nlu_training_data(
 async def _convert_core_training_data(
     in_path: Text, out_path: Text,
 ):
-    from rasa.shared.core.training_data.story_reader.markdown_story_reader import (
-        MarkdownStoryReader,
-    )
+    from rasa.core.training.converters import StoryMarkdownToYamlConverter
     from rasa.shared.core.training_data.story_reader.yaml_story_reader import (
         YAMLStoryReader,
     )
 
-    reader = (
-        MarkdownStoryReader()
-        if rasa.shared.data.is_likely_markdown_file(in_path)
-        else YAMLStoryReader()
-    )
-    steps = reader.read_from_file(in_path)
-    YAMLStoryWriter().dump(out_path, steps)
+    if rasa.shared.data.is_likely_markdown_file(in_path):
+        in_path = Path(in_path)
+        out_path = in_path.parent
+        await StoryMarkdownToYamlConverter.convert_and_write(in_path, out_path)
+    else:
+        steps = YAMLStoryReader().read_from_file(in_path)
+        YAMLStoryWriter().dump(out_path, steps)
 
 
 def _get_output_channel(
