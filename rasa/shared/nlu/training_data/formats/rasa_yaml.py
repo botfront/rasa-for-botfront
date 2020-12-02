@@ -482,7 +482,17 @@ class RasaYAMLWriter(TrainingDataWriter):
             ]
 
             next_item = OrderedDict()
-            next_item[key_name] = entity_key
+            # bf >
+            # next_item[key_name] = entity_key
+            next_item[key_name] = entity_key[0]
+            metadata = {}
+            if entity_key[1] is not None:
+                metadata["language"] = entity_key[1]
+            if entity_key[2] is True:
+                metadata["canonical"] = entity_key[2]
+            if metadata:
+                next_item["metadata"] = metadata
+            # < bf
             next_item[key_examples] = LiteralScalarString("".join(converted_examples))
             result.append(next_item)
 
