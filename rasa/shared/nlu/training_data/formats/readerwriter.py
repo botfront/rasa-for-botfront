@@ -62,13 +62,12 @@ class TrainingDataWriter:
             # bf >
             metadata = example.pop("metadata", {})
             language = metadata.pop("language", None)
-            canonical = metadata.pop("canonical", False)
             if metadata:
                 example["metadata"] = metadata
             # < bf
             rasa_nlu_training_data_utils.remove_untrainable_entities_from(example)
             # bf >
-            intent = (example[INTENT], language, canonical)
+            intent = (example[INTENT], language)
             # intent = example[INTENT]
             # < bf
             training_examples.setdefault(intent, [])

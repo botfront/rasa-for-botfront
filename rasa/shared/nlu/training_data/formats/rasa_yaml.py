@@ -474,12 +474,22 @@ class RasaYAMLWriter(TrainingDataWriter):
         result = []
         for entity_key, examples in training_examples.items():
 
-            converted_examples = [
-                TrainingDataWriter.generate_list_item(
-                    example_extraction_predicate(example).strip(STRIP_SYMBOLS)
-                )
-                for example in examples
-            ]
+            # bf >
+            # converted_examples = [
+            #     TrainingDataWriter.generate_list_item(
+            #         example_extraction_predicate(example).strip(STRIP_SYMBOLS)
+            #     )
+            #     for example in examples
+            # ]
+            converted_examples = []
+            for example in examples:
+                metadata = example.pop("metadata", {})
+                sorted_example = OrderedDict()
+                sorted_example["text"] = example_extraction_predicate(example)
+                if metadata:
+                    sorted_example["metadata"] = metadata
+                converted_examples.append(sorted_example)
+            # < bf
 
             next_item = OrderedDict()
             # bf >
@@ -488,12 +498,11 @@ class RasaYAMLWriter(TrainingDataWriter):
             metadata = {}
             if entity_key[1] is not None:
                 metadata["language"] = entity_key[1]
-            if entity_key[2] is True:
-                metadata["canonical"] = entity_key[2]
             if metadata:
                 next_item["metadata"] = metadata
+            # next_item[key_examples] = LiteralScalarString("".join(converted_examples))
+            next_item[key_examples] = converted_examples
             # < bf
-            next_item[key_examples] = LiteralScalarString("".join(converted_examples))
             result.append(next_item)
 
         return result
