@@ -89,7 +89,7 @@ class BotfrontTrackerStore(TrackerStore):
         self.graphql_endpoint = HTTPEndpoint(host, *headers)
         self.host = host
         self.environement = os.environ.get("BOTFRONT_ENV", "development")
-        self.botfront_test_regex = re.compile('^botfront_test_case_')
+        self.botfront_test_regex = re.compile('^bot_regression_test_')
 
         super(BotfrontTrackerStore, self).__init__(domain)
         logger.debug("BotfrontTrackerStore tracker store created")
