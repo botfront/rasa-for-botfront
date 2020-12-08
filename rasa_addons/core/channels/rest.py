@@ -43,7 +43,7 @@ class BotfrontRestOutput(CollectingOutputChannel):
         if custom: obj.update(custom)
 
         # filter out any values that are `None`
-        return utils.remove_none_values(obj)
+        return {k: v for k, v in obj.items() if v is not None}
 
     async def send_text_message(
         self, recipient_id: Text, text: Text, **kwargs: Any

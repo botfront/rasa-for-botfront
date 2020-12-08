@@ -3,6 +3,7 @@ import jsonpickle
 import requests
 import time
 import os
+import re
 from threading import Thread
 
 from rasa.core.tracker_store import TrackerStore
@@ -76,6 +77,7 @@ class BotfrontTrackerStore(TrackerStore):
         self.tracker_persist_time = kwargs.get("tracker_persist_time", 3600)
         self.max_events = kwargs.get("max_events", 100)
         self.trackers = {}
+        self.test_trackers = {}
         self.trackers_info = (
             {}
         )  # in this stucture we will keep the last index and the last timestamp of events in the db for a said tracker
@@ -87,6 +89,7 @@ class BotfrontTrackerStore(TrackerStore):
         self.graphql_endpoint = HTTPEndpoint(host, *headers)
         self.host = host
         self.environement = os.environ.get("BOTFRONT_ENV", "development")
+        self.botfront_test_regex = re.compile('^botfront_test_case_')
 
         super(BotfrontTrackerStore, self).__init__(domain)
         logger.debug("BotfrontTrackerStore tracker store created")
@@ -168,11 +171,13 @@ class BotfrontTrackerStore(TrackerStore):
             }
 
     def save(self, canonical_tracker):
-
-        # Fetch here just in case retrieve wasn't called first
-        sender_id = canonical_tracker.sender_id
-        tracker = self.trackers.get(sender_id)
         serialized_tracker = self._serialize_tracker_to_dict(canonical_tracker)
+        sender_id = canonical_tracker.sender_id
+        if self.botfront_test_regex.match(sender_id):
+            self.test_trackers[sender_id] = canonical_tracker
+            return serialized_tracker
+        # Fetch here just in case retrieve wasn't called first
+        tracker = self.trackers.get(sender_id)
 
         if tracker is None:  # the tracker does not exist localy ( first save)
             updated_info = self._insert_tracker_gql(sender_id, serialized_tracker)
@@ -231,6 +236,8 @@ class BotfrontTrackerStore(TrackerStore):
             return remote_tracker
 
     def retrieve(self, sender_id):
+        if self.botfront_test_regex.match(sender_id):
+            return self.test_trackers.get(sender_id)
         last_index = self._get_last_index(sender_id)
         # retreive all new info since the last sync (given by last index)
         new_tracker_info = self._fetch_tracker(sender_id, last_index)
@@ -249,8 +256,23 @@ class BotfrontTrackerStore(TrackerStore):
 
         # the tracker exist localy an there is no new infos
         return self._convert_tracker(sender_id, current_tracker)
-
-    def sweep(self):
+    
+    def cleanup_test_trackers(self):
+        try:
+            for sender_id in list(
+                self.test_trackers.keys()
+            ):
+                max_event_time = time.time() - 600
+                tracker = self.test_trackers.get(sender_id)
+                latest_event = tracker.latest_message.timestamp
+                if latest_event < max_event_time:
+                    logger.debug("SWEEPER: Removing botfront test tracker {}".format(sender_id))
+                    del self.test_trackers[sender_id]
+        except Exception as e:
+            print(e)
+            pass
+    
+    def cleanup_regular_trackers(self):
         try:  ## wraped in a try block so if and exception occurs it does not stopp the sweep mechanism
             for key in list(
                 self.trackers.keys()
@@ -267,6 +289,10 @@ class BotfrontTrackerStore(TrackerStore):
         except Exception as e:
             print(e)
             pass
+
+    def sweep(self):
+        self.cleanup_test_trackers()
+        self.cleanup_regular_trackers()
 
     @staticmethod
     def _serialize_tracker_to_dict(canonical_tracker):
