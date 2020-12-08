@@ -32,6 +32,3 @@ def test_botframework_channel():
         input_channel = TestCaseInput({ "url": "http://127.0.0.1:3000/graphql"})
         result = input_channel.compare_step_lists(test_data.get("actual"), test_data.get("expected"))
         assert result == test_data.get("result")
-
-
-
