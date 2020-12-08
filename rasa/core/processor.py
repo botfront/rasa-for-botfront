@@ -306,7 +306,7 @@ class MessageProcessor:
             # save tracker state to continue conversation from this state
             self._save_tracker(tracker)
         # bf >
-        if message.output_channel.name() == 'botfront_test_output':
+        if message.output_channel.name() == 'bot_regression_test_output':
             # BOTFRONT TEST CHANNEL: send user messages to the output channel
             # if the output channel is the botfront output channel
             message.output_channel.send_parsed_message(tracker.latest_message)
