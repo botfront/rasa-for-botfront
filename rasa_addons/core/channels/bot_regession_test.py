@@ -44,13 +44,6 @@ class BotRegressionTestOutput(BotfrontRestOutput):
 
 
 class BotRegressionTestInput(RestInput):
-    def __init__(self, config: Optional[Dict[Text, Any]] = None):
-        self.url = config.get("url")
-
-    @classmethod
-    def from_credentials(cls, credentials: Optional[Dict[Text, Any]]) -> InputChannel:
-        credentials = credentials or {}
-        return cls(credentials)
 
     def name(cls) -> Text:
         return "test_case"
@@ -95,45 +88,14 @@ class BotRegressionTestInput(RestInput):
                     )
         return collector
 
-    @staticmethod
-    def compare_one_entity(actual, expected) -> bool:
-        return (
-            actual.get("entity") == expected.get("entity")
-            and actual.get("value") == expected.get("value")
-            and actual.get("start") == expected.get("start")
-            and actual.get("end") == expected.get("end")
-        )
-
-    def compare_entities(self, actual_entities, expected_entites) -> bool:
-        expected_remaining = expected_entites.copy()
-        for actual in actual_entities:
-            index_of_match = next(
-                (
-                    i
-                    for i, expected in enumerate(expected_remaining)
-                    if self.compare_one_entity(actual, expected)
-                ),
-                -1,
-            )
-            if index_of_match in range(0, len(expected_remaining)):
-                expected_remaining.pop(index_of_match)
-        return len(expected_remaining) == 0 and len(actual_entities) == len(
-            expected_entites
-        )
-
     def compare_steps(self, actual_step, expected_step) -> bool:
-        if "user" in actual_step and "user" in expected_step:
-            return (
-                actual_step.get("text") == expected_step.get("text")
-                and actual_step.get("intent") == expected_step.get("intent")
-                and self.compare_entities(
-                    actual_step.get("entities"), expected_step.get("entities")
-                )
-            )
-        elif "action" in actual_step and "action" in expected_step:
-            return actual_step.get("action") == expected_step.get("action")
-        else:
-            return False
+        actual_entities = actual_step.get("entities", [])
+        expected_entities = expected_step.get("entities", [])
+        return (
+            actual_step == expected_step
+            and all(e in actual_entities for e in expected_entities)
+            and all(e in expected_entities for e in actual_entities)
+        )
 
     @staticmethod
     def format_as_step(step: Dict[Text, Any]) -> Dict[Text, Any]:
@@ -202,7 +164,6 @@ class BotRegressionTestInput(RestInput):
                     )
                 matched_step = expected_steps_remaining.pop(0)
                 self.accumulate_matching_step(matched_step, results_acc)
-            print("step complete")
         # accumulate expected steps will add any leftover expected/actual steps to results_acc.steps
         self.accumulate_expected_steps(
             expected_steps_remaining, len(expected_steps_remaining), results_acc
