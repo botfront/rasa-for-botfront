@@ -9,7 +9,7 @@ import tempfile
 import typing
 from packaging import version
 from pathlib import Path
-from typing import Text, Tuple, Union, Optional, List, Dict, NamedTuple
+from typing import Any, Text, Tuple, Union, Optional, List, Dict, NamedTuple
 
 import rasa.shared.utils.io
 import rasa.utils.io
@@ -26,7 +26,6 @@ from rasa.shared.constants import (
 )
 from rasa.constants import MINIMUM_COMPATIBLE_VERSION
 
-from rasa.core.utils import get_dict_hash
 from rasa.exceptions import ModelNotFound
 from rasa.utils.common import TempDirectoryPath
 
@@ -151,6 +150,12 @@ def get_model(model_path: Text = DEFAULT_MODELS_PATH) -> TempDirectoryPath:
             )
     elif not model_path.endswith(".tar.gz"):
         raise ModelNotFound(f"Path '{model_path}' does not point to a Rasa model file.")
+
+    try:
+        model_relative_path = os.path.relpath(model_path)
+    except ValueError:
+        model_relative_path = model_path
+    logger.info(f"Loading model {model_relative_path}...")
 
     return unpack_model(model_path)
 
@@ -328,32 +333,34 @@ async def model_fingerprint(file_importer: "TrainingDataImporter") -> Fingerprin
     domain = copy.copy(domain)
     # don't include the response texts in the fingerprint.
     # Their fingerprint is separate.
-    domain.templates = []
+    domain.templates = {}
 
     return {
-        FINGERPRINT_CONFIG_KEY: _get_hash_of_config(config, exclude_keys=CONFIG_KEYS),
-        FINGERPRINT_CONFIG_CORE_KEY: _get_hash_of_config(
+        FINGERPRINT_CONFIG_KEY: _get_fingerprint_of_config(
+            config, exclude_keys=CONFIG_KEYS
+        ),
+        FINGERPRINT_CONFIG_CORE_KEY: _get_fingerprint_of_config(
             config, include_keys=CONFIG_KEYS_CORE
         ),
         FINGERPRINT_CONFIG_NLU_KEY: {
-            lang: _get_hash_of_config(config, include_keys=CONFIG_KEYS_NLU)
+            lang: _get_fingerprint_of_config(config, include_keys=CONFIG_KEYS_NLU)
             for (lang, config) in nlu_config.items()
         }
         if len(nlu_config)
         else "",
-        FINGERPRINT_DOMAIN_WITHOUT_NLG_KEY: hash(domain),
-        FINGERPRINT_NLG_KEY: get_dict_hash(responses),
+        FINGERPRINT_DOMAIN_WITHOUT_NLG_KEY: domain.fingerprint(),
+        FINGERPRINT_NLG_KEY: rasa.shared.utils.io.deep_container_fingerprint(responses),
         FINGERPRINT_PROJECT: project_fingerprint(),
         FINGERPRINT_NLU_DATA_KEY: {lang: hash(nlu_data[lang]) for lang in nlu_data},
         FINGERPRINT_STORIES_KEY: stories_hash,
         FINGERPRINT_TRAINED_AT_KEY: time.time(),
-        FINGERPRINT_RASA_VERSION_KEY: rasa.__version__,  # pytype: disable=module-attr
+        FINGERPRINT_RASA_VERSION_KEY: rasa.__version__,
     }
     # /bf mod
 
 
-def _get_hash_of_config(
-    config: Optional[Dict],
+def _get_fingerprint_of_config(
+    config: Optional[Dict[Text, Any]],
     include_keys: Optional[List[Text]] = None,
     exclude_keys: Optional[List[Text]] = None,
 ) -> Text:
@@ -364,7 +371,7 @@ def _get_hash_of_config(
 
     sub_config = {k: config[k] for k in keys if k in config}
 
-    return get_dict_hash(sub_config)
+    return rasa.shared.utils.io.deep_container_fingerprint(sub_config)
 
 
 def fingerprint_from_path(model_path: Text) -> Fingerprint:
@@ -582,5 +589,5 @@ async def update_model_with_new_domain(
 
     model_path = Path(unpacked_model_path) / DEFAULT_CORE_SUBDIRECTORY_NAME
     domain = await importer.get_domain()
-
+    domain.setup_slots()
     domain.persist(model_path / DEFAULT_DOMAIN_PATH)

@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Text, Any, List, Dict, Tuple, Union, Iterator, Optional
 
 import rasa.shared.data
+from rasa.shared.core.domain import Domain
 from rasa.shared.exceptions import YamlException
 from rasa.shared.utils import validation
 from ruamel.yaml import StringIO
@@ -83,7 +84,7 @@ class RasaYAMLReader(TrainingDataReader):
         ):
             return TrainingData()
 
-        for key, value in yaml_content.items():  # pytype: disable=attribute-error
+        for key, value in yaml_content.items():
             if key == KEY_NLU:
                 self._parse_nlu(value)
             elif key == KEY_RESPONSES:
@@ -171,14 +172,12 @@ class RasaYAMLReader(TrainingDataReader):
         if isinstance(examples, list):
             example_tuples = [
                 (
-                    # pytype: disable=attribute-error
                     example.get(KEY_INTENT_TEXT, "").strip(STRIP_SYMBOLS),
                     example.get(KEY_METADATA),
                 )
                 for example in examples
                 if example
             ]
-        # pytype: enable=attribute-error
         elif isinstance(examples, str):
             example_tuples = [
                 (example, None)
@@ -411,7 +410,9 @@ class RasaYAMLWriter(TrainingDataWriter):
             result[KEY_NLU] = nlu_items
 
         if training_data.responses:
-            result[KEY_RESPONSES] = training_data.responses
+            result[KEY_RESPONSES] = Domain.get_responses_with_multilines(
+                training_data.responses
+            )
 
         return result
 

@@ -45,6 +45,7 @@ from rasa.model import (
 )
 from rasa.exceptions import ModelNotFound
 from tests.core.conftest import DEFAULT_DOMAIN_PATH_WITH_MAPPING
+from rasa.constants import MINIMUM_COMPATIBLE_VERSION
 
 
 from rasa.telemetry import TELEMETRY_ENABLED_ENVIRONMENT_VARIABLE
@@ -110,7 +111,7 @@ def _fingerprint(
     nlg: Optional[Any] = None,
     stories: Optional[Any] = None,
     nlu: Optional[Any] = None,
-    rasa_version: Text = "1.0",
+    rasa_version: Text = MINIMUM_COMPATIBLE_VERSION, # bf
 ):
     return {
         FINGERPRINT_CONFIG_KEY: config if config is not None else ["test"],
@@ -484,6 +485,31 @@ async def test_update_with_new_domain(trained_rasa_model: Text, tmpdir: Path):
     actual = Domain.load(tmpdir / DEFAULT_CORE_SUBDIRECTORY_NAME / DEFAULT_DOMAIN_PATH)
 
     assert actual.is_empty()
+
+
+async def test_update_with_new_domain_preserves_domain(
+    tmpdir: Path, domain_with_categorical_slot_path
+):
+    domain = Domain.load(domain_with_categorical_slot_path)
+    domain.setup_slots()
+
+    core_directory = tmpdir / DEFAULT_CORE_SUBDIRECTORY_NAME
+    core_directory.mkdir()
+
+    domain.persist(str(core_directory / DEFAULT_DOMAIN_PATH))
+    domain.persist_specification(core_directory)
+
+    mocked_importer = Mock()
+
+    async def get_domain() -> Domain:
+        return Domain.load(domain_with_categorical_slot_path)
+
+    mocked_importer.get_domain = get_domain
+
+    await model.update_model_with_new_domain(mocked_importer, tmpdir)
+
+    new_persisted = Domain.load(core_directory / DEFAULT_DOMAIN_PATH)
+    new_persisted.compare_with_specification(str(core_directory))
 
 
 @pytest.mark.parametrize(
