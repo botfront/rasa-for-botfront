@@ -21,39 +21,19 @@ class BotRegressionTestOutput(BotfrontRestOutput):
     def name(self) -> Text:
         return "bot_regression_test_output"
 
-    @staticmethod
-    def extract_entities(entities: List[Dict[Text, Any]]) -> List[Dict[Text, Any]]:
-        formatted_entities = []
-        for entity in entities:
-            formatted_entity = {
-                "entity": entity.get("entity"),
-                "start": entity.get("start"),
-                "end": entity.get("end"),
-                "value": entity.get("value"),
-            }
-            formatted_entities.append(formatted_entity)
-        return formatted_entities
-
     def send_parsed_message(self, message: UserMessage,) -> None:
         formatted_message = {
             "user": message.text,
             "intent": message.intent.get("name"),
-            "entities": self.extract_entities(message.entities),
+            "entities": [
+                {k: e.get(k) for k in ["entity", "start", "end", "value"]}
+                for e in message.entities
+            ],
         }
         self.messages.append(formatted_message)
 
 
 class BotRegressionTestInput(RestInput):
-
-    def name(cls) -> Text:
-        return "test_case"
-
-    def _extract_test_cases(self, req: Request) -> Text:
-        return req.json.get("test_cases")
-
-    def _extract_project_id(self, req: Request) -> Text:
-        return req.json.get("project_id")
-
     async def simulate_messages(
         self,
         steps: List[Dict[Text, Any]],
@@ -152,7 +132,7 @@ class BotRegressionTestInput(RestInput):
             "actual": [],
             "steps": [],
         }
-        for i, unformatted_actual_step in enumerate(actual_steps):
+        for unformatted_actual_step in actual_steps:
             actual_step = self.format_as_step(unformatted_actual_step)
             match_index = self.get_index_of_step(actual_step, expected_steps_remaining)
             if match_index is None:
@@ -182,9 +162,8 @@ class BotRegressionTestInput(RestInput):
     ) -> List[Dict[Text, Any]]:
         all_results = []
         for test_case in test_cases:
-            expected_steps = test_case.get("steps")
             collector = await self.simulate_messages(
-                expected_steps, test_case.get("language"), on_new_message
+                test_case.get("steps"), test_case.get("language"), on_new_message
             )
             test_results = self.compare_step_lists(
                 collector.messages, test_case.get("steps")
@@ -214,12 +193,8 @@ class BotRegressionTestInput(RestInput):
 
         @custom_webhook.route("/run", methods=["POST"])
         async def receive(request: Request) -> HTTPResponse:
-            should_use_stream = rasa.utils.endpoints.bool_arg(
-                request, "stream", default=False
-            )
-            test_cases = self._extract_test_cases(request)
-            project_id = self._extract_project_id(request)
-            response.json({"success": True})
+            test_cases = request.json.get("test_cases")
+            project_id = request.json.get("project_id")
             results = await self.run_tests(test_cases, project_id, on_new_message)
             return response.json(results)
 
