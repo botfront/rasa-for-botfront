@@ -484,12 +484,15 @@ class RasaYAMLWriter(TrainingDataWriter):
             # ]
             converted_examples = []
             for example in examples:
-                metadata = example.pop("metadata", {})
-                sorted_example = OrderedDict()
-                sorted_example["text"] = example_extraction_predicate(example)
-                if metadata:
-                    sorted_example["metadata"] = metadata
-                converted_examples.append(sorted_example)
+                if type(example) == dict:
+                    metadata = example.pop("metadata", {})
+                    sorted_example = OrderedDict()
+                    sorted_example["text"] = example_extraction_predicate(example)
+                    if metadata:
+                        sorted_example["metadata"] = metadata
+                    converted_examples.append(sorted_example)
+                else:
+                    converted_examples.append(example)
             # < bf
 
             next_item = OrderedDict()
