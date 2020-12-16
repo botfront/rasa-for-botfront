@@ -2,6 +2,14 @@
 
 .. towncrier release notes start
 
+[1.10.16-bf.4] - 2020-12-16
+^^^^^^^^^^^^^^^^^^^^^
+
+Bugfixes
+--------
+- `c149adb <https://github.com/botfront/rasa-for-botfront/commit/c149adb031b720e105449a2be9751caaa447c6ec>`_: Allow training when old model is corrupted.
+
+
 [1.10.16-bf.3] - 2020-11-25
 ^^^^^^^^^^^^^^^^^^^^^
 
