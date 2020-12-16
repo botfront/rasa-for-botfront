@@ -495,6 +495,11 @@ def should_retrain(
     if old_model is None or not os.path.exists(old_model):
         return fingerprint_comparison
 
+    try:
+        unpack_model(old_model)
+    except:
+        return fingerprint_comparison
+
     with unpack_model(old_model) as unpacked:
         last_fingerprint = fingerprint_from_path(unpacked)
         old_core, old_nlu = get_model_subdirectories(unpacked)
