@@ -2,6 +2,14 @@
 
 .. towncrier release notes start
 
+[1.10.16-bf.3] - 2020-11-25
+^^^^^^^^^^^^^^^^^^^^^
+
+Bugfixes
+--------
+- `#35 <https://github.com/botfront/rasa-for-botfront/pull/35>`_: Fix form submission, where exiting form with no SlotSet instruction caused a TypeError.
+
+
 [1.10.16-bf.2] - 2020-11-12
 ^^^^^^^^^^^^^^^^^^^^^
 
