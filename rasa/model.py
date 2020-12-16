@@ -4,6 +4,7 @@ import os
 import shutil
 import tempfile
 import typing
+from packaging import version
 from pathlib import Path
 from typing import Text, Tuple, Union, Optional, List, Dict, NamedTuple
 
@@ -17,6 +18,7 @@ from rasa.constants import (
     DEFAULT_DOMAIN_PATH,
     DEFAULT_CORE_SUBDIRECTORY_NAME,
 )
+from rasa.constants import MINIMUM_COMPATIBLE_VERSION
 
 from rasa.core.utils import get_dict_hash
 from rasa.exceptions import ModelNotFound
@@ -468,6 +470,10 @@ def should_retrain(
         last_fingerprint = fingerprint_from_path(unpacked)
         old_core, old_nlu = get_model_subdirectories(unpacked)
 
+        model_outdated = version.parse(last_fingerprint.get("version")) < version.parse(
+            MINIMUM_COMPATIBLE_VERSION
+        )
+
         fingerprint_comparison = FingerprintComparisonResult(
             core=did_section_fingerprint_change(
                 last_fingerprint, new_fingerprint, SECTION_CORE
@@ -478,6 +484,7 @@ def should_retrain(
             nlg=did_section_fingerprint_change(
                 last_fingerprint, new_fingerprint, SECTION_NLG
             ),
+            force_training=model_outdated,
         )
 
         core_merge_failed = False
