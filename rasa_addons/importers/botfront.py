@@ -110,6 +110,6 @@ class BotfrontFileImporter(TrainingDataImporter):
             domain = Domain.load(self._domain_path)
             domain.check_missing_templates()
         except Exception as e:
-            logger.warning(e)
+            logger.error(e)
         finally:
             return domain

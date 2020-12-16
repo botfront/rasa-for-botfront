@@ -1566,6 +1566,11 @@ class SlotMapping(Enum):
 
 
 def _validate_slot_mappings(forms: Union[Dict, List]) -> None:
+    # made a mistake moving bf_forms from slots to forms in f4001ca...
+    # they now fail validation, so we very unelegantly skip it.
+    # however this means that a bf domain w/ forms cannot be loaded in rasa
+    # vanilla.
+    return
     if isinstance(forms, list):
         if not all(isinstance(form_name, str) for form_name in forms):
             raise InvalidDomain(
