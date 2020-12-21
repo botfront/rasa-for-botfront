@@ -34,6 +34,9 @@ class BotRegressionTestOutput(BotfrontRestOutput):
 
 
 class BotRegressionTestInput(RestInput):
+    def name(self) -> Text:
+        return "bot_regression_test"
+
     async def simulate_messages(
         self,
         steps: List[Dict[Text, Any]],

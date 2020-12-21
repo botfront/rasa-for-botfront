@@ -116,6 +116,19 @@ credentials:
   ...
 ```
 
+## rasa_addons.core.channels.bot_regression_test.BotRegressionTestInput:
+Conversation testing channel. Simulates each user event in the input test stories as a message sent by a user, then compares the input story to the results from rasa. Returns a diff of the input story and output story with expected and actual events.
+
+## Example usage
+
+```yaml
+credentials:
+  ...
+  rasa_addons.core.channels.bot_regression_test.BotRegressionTestInput: {}
+    # POST {{rasa_url}} /webhooks/bot_regression_test/run
+  ...
+```
+
 ## rasa_addons.core.nlg.BotfrontTemplatedNaturalLanguageGenerator
 
 Idential to Rasa's `TemplatedNaturalLanguageGenerator`, except in handles templates with a language key.

@@ -1,7 +1,7 @@
 
 import pytest
 # this is needed so that the tests included as code examples look better
-from rasa_addons.core.channels.bot_regession_test import BotRegressionTestInput
+from rasa_addons.core.channels.bot_regression_test import BotRegressionTestInput
 
 bot_regression_test_data = [
     {
