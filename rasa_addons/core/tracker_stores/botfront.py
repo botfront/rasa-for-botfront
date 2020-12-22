@@ -3,6 +3,7 @@ import jsonpickle
 import requests
 import time
 import os
+import re
 from threading import Thread
 
 from rasa.core.tracker_store import TrackerStore
@@ -74,8 +75,10 @@ class BotfrontTrackerStore(TrackerStore):
 
         self.project_id = os.environ.get("BF_PROJECT_ID")
         self.tracker_persist_time = kwargs.get("tracker_persist_time", 3600)
+        self.test_tracker_persist_time = kwargs.get("test_tracker_persist_time", 240)
         self.max_events = kwargs.get("max_events", 100)
         self.trackers = {}
+        self.test_trackers = {}
         self.trackers_info = (
             {}
         )  # in this stucture we will keep the last index and the last timestamp of events in the db for a said tracker
@@ -87,6 +90,7 @@ class BotfrontTrackerStore(TrackerStore):
         self.graphql_endpoint = HTTPEndpoint(host, *headers)
         self.host = host
         self.environement = os.environ.get("BOTFRONT_ENV", "development")
+        self.botfront_test_regex = re.compile('^bot_regression_test_')
 
         super(BotfrontTrackerStore, self).__init__(domain)
         logger.debug("BotfrontTrackerStore tracker store created")
@@ -168,11 +172,13 @@ class BotfrontTrackerStore(TrackerStore):
             }
 
     def save(self, canonical_tracker):
-
-        # Fetch here just in case retrieve wasn't called first
-        sender_id = canonical_tracker.sender_id
-        tracker = self.trackers.get(sender_id)
         serialized_tracker = self._serialize_tracker_to_dict(canonical_tracker)
+        sender_id = canonical_tracker.sender_id
+        if self.botfront_test_regex.match(sender_id):
+            self.test_trackers[sender_id] = canonical_tracker
+            return serialized_tracker["events"]
+        # Fetch here just in case retrieve wasn't called first
+        tracker = self.trackers.get(sender_id)
 
         if tracker is None:  # the tracker does not exist localy ( first save)
             updated_info = self._insert_tracker_gql(sender_id, serialized_tracker)
@@ -231,6 +237,8 @@ class BotfrontTrackerStore(TrackerStore):
             return remote_tracker
 
     def retrieve(self, sender_id):
+        if self.botfront_test_regex.match(sender_id):
+            return self.test_trackers.get(sender_id)
         last_index = self._get_last_index(sender_id)
         # retreive all new info since the last sync (given by last index)
         new_tracker_info = self._fetch_tracker(sender_id, last_index)
@@ -250,23 +258,33 @@ class BotfrontTrackerStore(TrackerStore):
         # the tracker exist localy an there is no new infos
         return self._convert_tracker(sender_id, current_tracker)
 
+    def cleanup_trackers(self, trackers, persist_time):
+        for key in list(
+            trackers.keys()
+        ):
+            ## wraped in a try block so if an exception occurs it does not stop the sweep mechanism
+            try:
+                tracker = trackers.get(key)
+                max_event_time = time.time() - persist_time
+                latest_event = float("inf")
+                try:
+                    latest_event = tracker.latest_message.timestamp
+                except:
+                    latest_event = tracker.get("latest_event_time", float("inf"))
+                    pass
+                if latest_event < max_event_time:
+                    logger.debug("SWEEPER: Removing botfront test tracker {}".format(key))
+                    if key in trackers:
+                        del trackers[key]
+                    if key in self.trackers_info:
+                        del self.trackers_info[key]
+            except Exception as e:
+                print(e)
+                pass
+
     def sweep(self):
-        try:  ## wraped in a try block so if and exception occurs it does not stopp the sweep mechanism
-            for key in list(
-                self.trackers.keys()
-            ):  # Iterate over list of keys to prevent runtime errors when deleting elements
-                tracker = self.trackers.get(key)
-                max_event_time = time.time() - self.tracker_persist_time
-                latest_event = tracker.get("latest_event_time", float("inf"))
-                if latest_event is None:
-                    latest_event = float("inf")
-                if tracker is not None and (latest_event < max_event_time):
-                    logger.debug("SWEEPER: Removing tracker for user {}".format(key))
-                    del self.trackers[key]
-                    del self.trackers_info[key]
-        except Exception as e:
-            print(e)
-            pass
+        self.cleanup_trackers(self.test_trackers, self.test_tracker_persist_time)
+        self.cleanup_trackers(self.trackers, self.tracker_persist_time)
 
     @staticmethod
     def _serialize_tracker_to_dict(canonical_tracker):

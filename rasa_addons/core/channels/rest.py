@@ -1,4 +1,3 @@
-import asyncio
 import rasa
 import os
 import logging
@@ -6,10 +5,9 @@ import inspect
 from rasa.core.channels.channel import UserMessage, CollectingOutputChannel, InputChannel
 from rasa.core.channels.rest import RestInput
 from sanic.request import Request
-from sanic import Sanic, Blueprint, response
-from asyncio import Queue, CancelledError
+from sanic import Blueprint, response
+from asyncio import CancelledError
 from typing import Text, List, Dict, Any, Optional, Callable, Iterable, Awaitable
-from rasa.core import utils
 from sanic.response import HTTPResponse
 from rasa_addons.core.channels.graphql import get_config_via_graphql
 
@@ -43,7 +41,7 @@ class BotfrontRestOutput(CollectingOutputChannel):
         if custom: obj.update(custom)
 
         # filter out any values that are `None`
-        return utils.remove_none_values(obj)
+        return {k: v for k, v in obj.items() if v is not None}
 
     async def send_text_message(
         self, recipient_id: Text, text: Text, **kwargs: Any
