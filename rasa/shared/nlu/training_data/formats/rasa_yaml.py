@@ -97,6 +97,26 @@ class RasaYAMLReader(TrainingDataReader):
             self.lookup_tables,
             self.responses,
         )
+    
+    def read_from_dict(self, yaml_content: Dict, **kwargs: Any) -> "TrainingData":
+        if not validation.validate_training_data_format_version(
+            yaml_content, self.filename
+        ):
+            return TrainingData()
+
+        for key, value in yaml_content.items():
+            if key == KEY_NLU:
+                self._parse_nlu(value)
+            elif key == KEY_RESPONSES:
+                self.responses = value
+
+        return TrainingData(
+            self.training_examples,
+            self.entity_synonyms,
+            self.regex_features,
+            self.lookup_tables,
+            self.responses,
+        )
 
     def _parse_nlu(self, nlu_data: Optional[List[Dict[Text, Any]]]) -> None:
 
