@@ -29,6 +29,17 @@ DEFAULT_ENCODING = "utf-8"
 YAML_VERSION = (1, 2)
 
 
+from functools import wraps
+def run_once(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        if not f.has_run:
+            result = f(*args, **kwargs)
+            f.has_run = True
+            return result
+    f.has_run = False
+    return wrapper
+
 class bcolors:
     HEADER = "\033[95m"
     OKBLUE = "\033[94m"
@@ -274,6 +285,7 @@ def json_to_string(obj: Any, **kwargs: Any) -> Text:
     return json.dumps(obj, indent=indent, ensure_ascii=ensure_ascii, **kwargs)
 
 
+@run_once
 def fix_yaml_loader() -> None:
     """Ensure that any string read by yaml is represented as unicode."""
 
@@ -286,6 +298,7 @@ def fix_yaml_loader() -> None:
     yaml.SafeLoader.add_constructor("tag:yaml.org,2002:str", construct_yaml_str)
 
 
+@run_once
 def replace_environment_variables() -> None:
     """Enable yaml loader to process the environment variables in the yaml."""
     # eg. ${USER_NAME}, ${PASSWORD}
@@ -325,7 +338,7 @@ def read_yaml(content: Text, reader_type: Union[Text, List[Text]] = "safe") -> A
     yaml_parser = yaml.YAML(typ=reader_type)
     yaml_parser.version = YAML_VERSION
     yaml_parser.preserve_quotes = True
-    yaml.allow_duplicate_keys = False
+    yaml_parser.allow_duplicate_keys = False
 
     if _is_ascii(content):
         # Required to make sure emojis are correctly parsed

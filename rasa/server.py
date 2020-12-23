@@ -1138,7 +1138,12 @@ def create_app(
             rasa.shared.utils.io.write_text_file(data, in_path)
 
         if data_type == "nlu":
-            await _convert_nlu_training_data(in_path, out_path, language)
+            await request.app.loop.run_in_executor(
+                None,
+                functools.partial(
+                    _convert_nlu_training_data, in_path, out_path, language
+                ),
+            )
         else:
             await _convert_core_training_data(in_path, out_path)
 
@@ -1151,9 +1156,9 @@ def create_app(
                     metadata = example.pop("metadata", {})
                     metadata.update(metadata.pop("intent", {}))
                     metadata.update(metadata.pop("example", {}))
-                    examples_with_proper_metadata.append({
-                        **example, "metadata": metadata
-                    })
+                    examples_with_proper_metadata.append(
+                        {**example, "metadata": metadata}
+                    )
                 data["rasa_nlu_data"]["common_examples"] = examples_with_proper_metadata
         else:
             data = rasa.shared.utils.io.read_file(out_path)
@@ -1177,7 +1182,9 @@ def _parse_convert_request(request: Request, data_type: Text):
     data = rjs.get("data")
     input_format = rjs.get("input_format")
     output_format = rjs.get("output_format")
-    supported_formats = ["md", "json", "yaml", "yml"] if data_type == "nlu" else ["yaml", "yml"]
+    supported_formats = (
+        ["md", "json", "yaml", "yml"] if data_type == "nlu" else ["yaml", "yml"]
+    )
     if output_format == "yaml":
         output_format = "yml"
 
@@ -1198,10 +1205,27 @@ def _parse_convert_request(request: Request, data_type: Text):
     return data, input_format, output_format, rjs.get("language", "en")
 
 
-async def _convert_nlu_training_data(
+def _convert_nlu_training_data(
     in_path: Text, out_path: Text, language: Text,
 ):
-    if rasa.shared.data.is_likely_yaml_file(out_path):
+    # Since we failed to optimize NLU YAML reading to acceptable levels, the
+    # route can handle pre-parsed YAML.
+    if in_path.endswith("parsed_yaml"):
+        from rasa.shared.nlu.training_data.formats.rasa_yaml import (
+            RasaYAMLReader,
+            RasaYAMLWriter,
+        )
+
+        training_data = RasaYAMLReader().read_from_dict(
+            rasa.shared.utils.io.read_json_file(in_path)
+        )
+        if out_path.endswith("json"):
+            rasa.nlu.utils.write_to_file(out_path, training_data.nlu_as_json(indent=2))
+        elif out_path.endswith("md"):
+            rasa.nlu.utils.write_to_file(out_path, training_data.nlu_as_markdown())
+        else:
+            RasaYAMLWriter().dump(out_path, training_data)
+    elif rasa.shared.data.is_likely_yaml_file(out_path):
         from rasa.shared.nlu.training_data.loading import load_data
         from rasa.shared.nlu.training_data.formats.rasa_yaml import RasaYAMLWriter
 
@@ -1211,7 +1235,7 @@ async def _convert_nlu_training_data(
         from rasa.nlu.convert import convert_training_data
 
         convert_training_data(
-            in_path, out_path, Path(out_path).suffix.replace('.', ''), language,
+            in_path, out_path, Path(out_path).suffix.replace(".", ""), language,
         )
 
 
@@ -1323,7 +1347,9 @@ def _training_payload_from_json(request: Request) -> Dict[Text, Any]:
 
     if "fragments" in request_payload:
         fragments_path = os.path.join(temp_dir, "fragments.yml")
-        rasa.shared.utils.io.write_text_file(request_payload["fragments"], fragments_path)
+        rasa.shared.utils.io.write_text_file(
+            request_payload["fragments"], fragments_path
+        )
 
     # << bf
 
