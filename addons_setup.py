@@ -9,7 +9,7 @@ with io.open(
     long_description = f.read()
 setup(
     name="rasa_addons",
-    version="2.1.3.5",
+    version="2.1.3.6",
     author="Botfront",
     description="Rasa Addons - Components for Rasa and Botfront",
     long_description=long_description,
