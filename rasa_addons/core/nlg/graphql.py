@@ -173,6 +173,7 @@ class GraphQLNaturalLanguageGenerator(NaturalLanguageGenerator):
                 metadata = response.pop("metadata", {}) or {}
                 for key in metadata:
                     response[key] = metadata[key]
+                response["template_name"] = template_name
 
                 keys_to_interpolate = [
                     "text",

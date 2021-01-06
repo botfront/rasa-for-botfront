@@ -97,6 +97,7 @@ class BotfrontTemplatedNaturalLanguageGenerator(NaturalLanguageGenerator):
         metadata = message.pop("metadata", {}) or {}
         for key in metadata:
             message[key] = metadata[key]
+        message["template_name"] = template_name
 
         return message
 
