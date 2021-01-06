@@ -536,6 +536,8 @@ def should_retrain(
         #     target_path = os.path.join(train_path, "nlu")
         #     fingerprint_comparison.nlu = not move_model(old_nlu, target_path)
         languages_to_train = fingerprint_comparison.should_retrain_nlu()
+        if languages_to_train == True:  # replace True with list of all langs
+            languages_to_train = list(new_fingerprint.get("nlu-config", {}).keys())
         for lang in old_nlu.keys():
             target_path = os.path.join(train_path, "nlu-{}".format(lang))
             if lang in new_fingerprint.get("nlu-config").keys():
