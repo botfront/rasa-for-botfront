@@ -138,7 +138,8 @@ class ActionBotfrontForm(Action):
             )
             if template:
                 events += [create_bot_utterance(template)]
-        if collect_in_botfront:
+        is_test_run = tracker.sender_id.startswith("bot_regression_test")
+        if collect_in_botfront and not is_test_run:
             submit_form_to_botfront(tracker)
         return events
 
