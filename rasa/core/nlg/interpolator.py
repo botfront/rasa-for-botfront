@@ -68,7 +68,7 @@ def interpolate(
                 interpolate(v, values)
             elif isinstance(v, list):
                 template[k] = [interpolate(i, values) for i in v]
-            elif isinstance(v, str):
+            elif isinstance(v, str) and k != "payload": # bf cheap fix: ignore payload key
                 template[k] = interpolate_text(v, values)
         return template
     elif isinstance(template, list):
