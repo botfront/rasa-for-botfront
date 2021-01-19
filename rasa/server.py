@@ -6,7 +6,7 @@ import os
 import tempfile
 import traceback
 from collections import defaultdict
-from functools import reduce, wraps
+from functools import reduce, wraps, partial
 from http import HTTPStatus
 from inspect import isawaitable
 from pathlib import Path
@@ -1393,7 +1393,7 @@ def create_app(
         if data_type == "nlu":
             await request.app.loop.run_in_executor(
                 None,
-                functools.partial(
+                partial(
                     _convert_nlu_training_data, in_path, out_path, language
                 ),
             )
