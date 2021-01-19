@@ -11,6 +11,9 @@ from packaging import version
 from pathlib import Path
 from typing import Any, Text, Tuple, Union, Optional, List, Dict, NamedTuple
 
+from packaging import version
+
+from rasa.constants import MINIMUM_COMPATIBLE_VERSION
 import rasa.shared.utils.io
 import rasa.utils.io
 from rasa.cli.utils import create_output_path
@@ -32,7 +35,6 @@ from rasa.utils.common import TempDirectoryPath
 if typing.TYPE_CHECKING:
     from rasa.shared.importers.importer import TrainingDataImporter
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -44,18 +46,19 @@ FINGERPRINT_FILE_PATH = "fingerprint.json"
 FINGERPRINT_CONFIG_KEY = "config"
 FINGERPRINT_CONFIG_CORE_KEY = "core-config"
 FINGERPRINT_CONFIG_NLU_KEY = "nlu-config"
+FINGERPRINT_CONFIG_WITHOUT_EPOCHS_KEY = "config-without-epochs"
 FINGERPRINT_DOMAIN_WITHOUT_NLG_KEY = "domain"
 FINGERPRINT_NLG_KEY = "nlg"
 FINGERPRINT_RASA_VERSION_KEY = "version"
 FINGERPRINT_STORIES_KEY = "stories"
 FINGERPRINT_NLU_DATA_KEY = "messages"
+FINGERPRINT_NLU_LABELS_KEY = "nlu_labels"
 FINGERPRINT_PROJECT = "project"
 FINGERPRINT_TRAINED_AT_KEY = "trained_at"
 
 
 class Section(NamedTuple):
-    """Defines relevant fingerprint sections which are used to decide whether a model
-    should be retrained."""
+    """Specifies which fingerprint keys decide whether this sub-model is retrained."""
 
     name: Text
     relevant_keys: List[Text]
@@ -84,6 +87,8 @@ SECTION_NLG = Section(name="NLG templates", relevant_keys=[FINGERPRINT_NLG_KEY])
 
 
 class FingerprintComparisonResult:
+    """Container for the results of a fingerprint comparison."""
+
     def __init__(
         self,
         nlu: bool = True,
@@ -323,7 +328,8 @@ async def model_fingerprint(file_importer: "TrainingDataImporter") -> Fingerprin
     # bf mod
     config = await file_importer.get_config()
     domain = await file_importer.get_domain()
-    stories_hash = await file_importer.get_stories_hash()
+    stories = await file_importer.get_stories()
+    # stories_hash = await file_importer.get_stories_hash()
     nlu_data = await file_importer.get_nlu_data()
     nlu_config = await file_importer.get_nlu_config()
 
@@ -348,11 +354,19 @@ async def model_fingerprint(file_importer: "TrainingDataImporter") -> Fingerprin
         }
         if len(nlu_config)
         else "",
+        FINGERPRINT_CONFIG_WITHOUT_EPOCHS_KEY: _get_fingerprint_of_config_without_epochs(
+            config
+        ),
         FINGERPRINT_DOMAIN_WITHOUT_NLG_KEY: domain.fingerprint(),
         FINGERPRINT_NLG_KEY: rasa.shared.utils.io.deep_container_fingerprint(responses),
         FINGERPRINT_PROJECT: project_fingerprint(),
-        FINGERPRINT_NLU_DATA_KEY: {lang: hash(nlu_data[lang]) for lang in nlu_data},
-        FINGERPRINT_STORIES_KEY: stories_hash,
+        FINGERPRINT_NLU_DATA_KEY: {
+            lang: nlu_data[lang].fingerprint() for lang in nlu_data
+        },
+        FINGERPRINT_NLU_LABELS_KEY: {
+            lang: nlu_data[lang].label_fingerprint() for lang in nlu_data
+        },
+        FINGERPRINT_STORIES_KEY: stories.fingerprint(),  # stories_hash,
         FINGERPRINT_TRAINED_AT_KEY: time.time(),
         FINGERPRINT_RASA_VERSION_KEY: rasa.__version__,
     }
@@ -372,6 +386,23 @@ def _get_fingerprint_of_config(
     sub_config = {k: config[k] for k in keys if k in config}
 
     return rasa.shared.utils.io.deep_container_fingerprint(sub_config)
+
+
+def _get_fingerprint_of_config_without_epochs(
+    config: Optional[Dict[Text, Any]],
+) -> Text:
+    if not config:
+        return ""
+
+    copied_config = copy.deepcopy(config)
+
+    for key in ["pipeline", "policies"]:
+        if copied_config.get(key):
+            for p in copied_config[key]:
+                if "epochs" in p:
+                    del p["epochs"]
+
+    return rasa.shared.utils.io.deep_container_fingerprint(copied_config)
 
 
 def fingerprint_from_path(model_path: Text) -> Fingerprint:
@@ -476,7 +507,12 @@ def move_model(source: Text, target: Text) -> bool:
 
 
 def should_retrain(
-    new_fingerprint: Fingerprint, old_model: Text, train_path: Text
+    new_fingerprint: Fingerprint,
+    old_model: Text,
+    train_path: Text,
+    has_e2e_examples: bool = False,
+    force_training: bool = False,
+    nlu_untrainable: List[Text] = [],  # bf
 ) -> FingerprintComparisonResult:
     """Check which components of a model should be retrained.
 
@@ -484,6 +520,8 @@ def should_retrain(
         new_fingerprint: The fingerprint of the new model to be trained.
         old_model: Path to the old zipped model file.
         train_path: Path to the directory in which the new model will be trained.
+        has_e2e_examples: Whether the new training data contains e2e examples.
+        force_training: Indicates if the model needs to be retrained even if the data has not changed.
 
     Returns:
         A FingerprintComparisonResult object indicating whether Rasa Core and/or Rasa NLU needs
@@ -518,8 +556,12 @@ def should_retrain(
             nlg=did_section_fingerprint_change(
                 last_fingerprint, new_fingerprint, SECTION_NLG
             ),
-            force_training=model_outdated,
+            force_training=force_training or model_outdated,
         )
+
+        # We should retrain core if nlu data changes and there are e2e stories.
+        if has_e2e_examples and fingerprint_comparison.should_retrain_nlu():
+            fingerprint_comparison.core = True
 
         core_merge_failed = False
         if not fingerprint_comparison.should_retrain_core():
@@ -537,18 +579,66 @@ def should_retrain(
         #     fingerprint_comparison.nlu = not move_model(old_nlu, target_path)
         languages_to_train = fingerprint_comparison.should_retrain_nlu()
         if languages_to_train == True:  # replace True with list of all langs
-            languages_to_train = list(new_fingerprint.get("nlu-config", {}).keys())
+            languages_to_train = [
+                l
+                for l in new_fingerprint.get("nlu-config", {}).keys()
+                if l not in nlu_untrainable
+            ]
         for lang in old_nlu.keys():
             target_path = os.path.join(train_path, "nlu-{}".format(lang))
-            if lang in new_fingerprint.get("nlu-config").keys():
+            if (
+                lang in new_fingerprint.get("nlu-config").keys()
+                and lang not in nlu_untrainable
+            ):
                 # only attempt move if language is still in new fingerprints
                 # that way new model will not include that old lang
                 if not move_model(old_nlu.get(lang), target_path):
                     languages_to_train.append(lang)
+            else:
+                # remove lang model
+                import shutil
+                shutil.rmtree(target_path, True)
         fingerprint_comparison.nlu = languages_to_train
         # </ bf mod
 
         return fingerprint_comparison
+
+
+def can_finetune(
+    last_fingerprint: Fingerprint,
+    new_fingerprint: Fingerprint,
+    core: bool = False,
+    nlu: bool = False,
+) -> bool:
+    """Checks if components of a model can be finetuned with incremental training.
+
+    Args:
+        last_fingerprint: The fingerprint of the old model to potentially be fine-tuned.
+        new_fingerprint: The fingerprint of the new model.
+        core: Check sections for finetuning a core model.
+        nlu: Check sections for finetuning an nlu model.
+
+    Returns:
+        `True` if the old model can be finetuned, `False` otherwise.
+    """
+    section_keys = [
+        FINGERPRINT_CONFIG_WITHOUT_EPOCHS_KEY,
+    ]
+    if core:
+        section_keys.append(FINGERPRINT_DOMAIN_WITHOUT_NLG_KEY)
+    if nlu:
+        section_keys.append(FINGERPRINT_NLU_LABELS_KEY)
+
+    fingerprint_changed = did_section_fingerprint_change(
+        last_fingerprint,
+        new_fingerprint,
+        Section(name="finetune", relevant_keys=section_keys),
+    )
+
+    old_model_above_min_version = version.parse(
+        last_fingerprint.get(FINGERPRINT_RASA_VERSION_KEY)
+    ) >= version.parse(MINIMUM_COMPATIBLE_VERSION)
+    return old_model_above_min_version and not fingerprint_changed
 
 
 def package_model(
@@ -593,8 +683,35 @@ async def update_model_with_new_domain(
         importer: Importer which provides the new domain.
         unpacked_model_path: Path to the unpacked model.
     """
-
     model_path = Path(unpacked_model_path) / DEFAULT_CORE_SUBDIRECTORY_NAME
     domain = await importer.get_domain()
-    domain.setup_slots()
     domain.persist(model_path / DEFAULT_DOMAIN_PATH)
+
+
+def get_model_for_finetuning(
+    previous_model_file: Optional[Union[Path, Text]]
+) -> Optional[Text]:
+    """Gets validated path for model to finetune.
+
+    Args:
+        previous_model_file: Path to model file which should be used for finetuning or
+            a directory in case the latest trained model should be used.
+
+    Returns:
+        Path to model archive. `None` if there is no model.
+    """
+    if Path(previous_model_file).is_dir():
+        logger.debug(
+            f"Trying to load latest model from '{previous_model_file}' for "
+            f"finetuning."
+        )
+        return get_latest_model(previous_model_file)
+
+    if Path(previous_model_file).is_file():
+        return previous_model_file
+
+    logger.debug(
+        "No valid model for finetuning found as directory either "
+        "contains no model or model file cannot be found."
+    )
+    return None
