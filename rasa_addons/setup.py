@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="rasa_addons",
-    version="2.2.5.2",
+    version="2.2.5.3",
     author="Botfront",
     description="Rasa Addons - Components for Rasa and Botfront",
     install_requires=[
