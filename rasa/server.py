@@ -1318,7 +1318,7 @@ def create_app(
         model_path = request.json.get("model_file", None)
         model_server = request.json.get("model_server", None)
         remote_storage = request.json.get("remote_storage", None)
-
+        endpoints_req = request.json.get("endpoints", None)
         if model_server:
             try:
                 model_server = EndpointConfig.from_dict(model_server)
@@ -1330,9 +1330,19 @@ def create_app(
                     f"Supplied 'model_server' is not valid. Error: {e}",
                     {"parameter": "model_server", "in": "body"},
                 )
+        
+        endpoints_clean = deepcopy(endpoints) 
+        endpoints_clean.nlg.url = endpoints_req["nlg"]["url"]
+        endpoints_clean.tracker_store.project_id = endpoints_req["tracker_store"]["project_id"]
+        endpoints_clean.tracker_store.kwargs['project_id'] = endpoints_req["tracker_store"]["project_id"]
+        
+        logger.debug("Agent loaded with NLG endpoint {}".format(endpoints_clean.nlg.url))
+        logger.debug("Agent loaded with Tracker Store Object Variables {}" .format(endpoints_clean.tracker_store.__dict__))
+        
+        lock_store_loaded = LockStore.find_lock_store(endpoints_clean.lock_store)
 
         app.agent = await _load_agent(
-            model_path, model_server, remote_storage, endpoints, app.agent.lock_store
+            model_path, model_server, remote_storage, endpoints_clean, app.agent.lock_store
         )
 
         logger.debug(f"Successfully loaded model '{model_path}'.")
