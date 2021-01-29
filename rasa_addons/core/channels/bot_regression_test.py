@@ -48,7 +48,7 @@ class BotRegressionTestInput(RestInput):
         for step in steps:
             if "user" in step:
                 text = step.get("user")
-                metadata = {"lang": language}
+                metadata = {"language": language}
                 try:
                     await on_new_message(
                         UserMessage(
