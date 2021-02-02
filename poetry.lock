@@ -857,7 +857,7 @@ reference = "rasa-pypi"
 name = "editdistance"
 version = "0.5.3"
 description = "Fast implementation of the edit distance(Levenshtein distance)"
-category = "main"
+category = "dev"
 optional = false
 python-versions = "*"
 
@@ -1005,7 +1005,7 @@ reference = "rasa-pypi"
 name = "fuzzy-matcher"
 version = "0.1.0"
 description = "A super simple MIT licensed fuzzy matching library"
-category = "main"
+category = "dev"
 optional = false
 python-versions = "*"
 
@@ -1271,7 +1271,7 @@ reference = "rasa-pypi"
 name = "graphql-core"
 version = "3.1.2"
 description = "GraphQL implementation for Python, a port of GraphQL.js, the JavaScript reference implementation for GraphQL."
-category = "main"
+category = "dev"
 optional = false
 python-versions = ">=3.6,<4"
 
@@ -3116,9 +3116,9 @@ reference = "rasa-pypi"
 
 [[package]]
 name = "rasa_addons"
-version = "2.2.5.2"
+version = "2.2.5.3"
 description = ""
-category = "main"
+category = "dev"
 optional = false
 python-versions = "*"
 develop = false
@@ -3209,7 +3209,7 @@ reference = "rasa-pypi"
 name = "requests-futures"
 version = "1.0.0"
 description = "Asynchronous Python HTTP for Humans."
-category = "main"
+category = "dev"
 optional = false
 python-versions = "*"
 
@@ -3571,7 +3571,7 @@ reference = "rasa-pypi"
 name = "sgqlc"
 version = "12.1"
 description = "Simple GraphQL Client"
-category = "main"
+category = "dev"
 optional = false
 python-versions = ">=3.6"
 
@@ -4462,7 +4462,7 @@ transformers = ["transformers"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.6,<3.9"
-content-hash = "ae2f549adffee5a7260bb8a0eeb0858b4ef471d71c69cf12cb25b2907f1f0b1e"
+content-hash = "aa10892684ce838c821e156dd3bf8fa287450132aa599dc92880a789e4dd9715"
 
 [metadata.files]
 absl-py = [
