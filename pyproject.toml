@@ -126,7 +126,6 @@ joblib = "^0.15.1"
 sentry-sdk = ">=0.17.0,<0.20.0"
 aio-pika = "^6.7.1"
 pyTelegramBotAPI = "^3.7.3"
-rasa-addons = {path = "rasa_addons"}
 
 [tool.poetry.dev-dependencies]
 pytest-cov = "^2.10.0"
@@ -154,6 +153,7 @@ pydoc-markdown = "^3.5.0"
 pytest-timeout = "^1.4.2"
 mypy = "^0.790"
 bandit = "^1.6.3"
+rasa-addons = {path = "rasa_addons", develop = true}
 
 [tool.poetry.extras]
 spacy = [ "spacy",]
