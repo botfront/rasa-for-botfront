@@ -1,0 +1,44 @@
+version: 2.1
+
+orbs:
+  base: dialogue/base@1.9.1
+  python: dialogue/python@2.11.1
+  docker: dialogue/docker@1.7.3
+
+workflows:
+  # other than tags and master, how to limit this to PRs?
+  ci:
+    jobs:
+      - python/black:
+          name: black
+          context: org-global-v2
+      - python/isort:
+          name: isort
+          context: org-global-v2
+      - python/pylama:
+          name: pylama
+          context: org-global-v2
+      - python/test:
+          name: test
+          tests_directory: "tests/core/botfront tests/addons"
+          pytest_options: --no-cov
+          context: org-global-v2
+      - docker/build_image:
+          name: build-image
+          requires:
+            - black
+            - pylama
+            - isort
+            - test
+          dockerfile: docker/Dockerfile_botfront
+          filters:
+            branches:
+              only: master
+            tags:
+              only: /-bf\./
+          context: org-global-v2
+      - docker/push_tags:
+          name: push-image-tags
+          requires:
+            - build-image
+          context: org-global-v2
