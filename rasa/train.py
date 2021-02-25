@@ -714,7 +714,7 @@ def train_nlu(
 
     """
     return rasa.utils.common.run_in_loop(
-        _train_nlu_async(
+        train_nlu_async(
             config,
             nlu_data,
             output,
@@ -729,7 +729,7 @@ def train_nlu(
     )
 
 
-async def _train_nlu_async(
+async def train_nlu_async(
     config: Text,
     nlu_data: Text,
     output: Text,
@@ -741,6 +741,7 @@ async def _train_nlu_async(
     model_to_finetune: Optional[Text] = None,
     finetuning_epoch_fraction: float = 1.0,
 ) -> Optional[Text]:
+    """Trains an NLU model asynchronously."""
     if not nlu_data:
         rasa.shared.utils.cli.print_error(
             "No NLU data given. Please provide NLU data in order to train "

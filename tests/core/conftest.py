@@ -21,6 +21,7 @@ from rasa.core.policies.memoization import Policy
 from rasa.core.processor import MessageProcessor
 from rasa.shared.core.slots import Slot
 from rasa.core.tracker_store import InMemoryTrackerStore, MongoTrackerStore
+from rasa.core.lock_store import LockStore, InMemoryLockStore
 from rasa.shared.core.trackers import DialogueStateTracker
 
 DEFAULT_DOMAIN_PATH_WITH_SLOTS = "data/test_domains/default_with_slots.yml"
@@ -142,11 +143,13 @@ def default_channel() -> OutputChannel:
 @pytest.fixture
 async def default_processor(default_agent: Agent) -> MessageProcessor:
     tracker_store = InMemoryTrackerStore(default_agent.domain)
+    lock_store = InMemoryLockStore()
     return MessageProcessor(
         default_agent.interpreter,
         default_agent.policy_ensemble,
         default_agent.domain,
         tracker_store,
+        lock_store,
         TemplatedNaturalLanguageGenerator(default_agent.domain.templates),
     )
 
@@ -216,18 +219,3 @@ async def form_bot_agent(trained_async: Callable) -> Agent:
     )
 
     return Agent.load_local_model(zipped_model, action_endpoint=endpoint)
-
-
-@pytest.fixture(scope="session")
-async def response_selector_agent(trained_async: Callable) -> Agent:
-    zipped_model = await trained_async(
-        domain="examples/responseselectorbot/domain.yml",
-        config="examples/responseselectorbot/config.yml",
-        training_files=[
-            "examples/responseselectorbot/data/rules.yml",
-            "examples/responseselectorbot/data/stories.yml",
-            "examples/responseselectorbot/data/nlu.yml",
-        ],
-    )
-
-    return Agent.load_local_model(zipped_model)
