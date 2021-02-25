@@ -4,6 +4,25 @@
 
 For more information visit the [Botfront project on Github](https://github.com/botfront/botfront)
 
+## Main features supported by this fork (when used with Botfront)
+- Multilingual support (incl. NLG)
+- Form UI support
+- Conversion routes
+- Fetching creds and endpoints at startup
+- support for gazette (that is not really important)
+- Automated tests
+- NLU evaluation
+
+
+## Integrating Rasa upstream changes
+
+1. Pull latest tagged version
+```bash
+#TODO add git command
+```
+2. Do this
+3. Do that
+4. Apply versions
 
 ## Rasa Addons
 
