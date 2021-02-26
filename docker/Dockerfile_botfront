@@ -78,5 +78,5 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # the entry point
 EXPOSE 5005
-ENTRYPOINT ["sh"]
-CMD ["-c", "rasa run -m models/model-$BF_PROJECT_ID.tar.gz --enable-api --debug"]
+ENTRYPOINT ["bash"]
+CMD ["-c", "rasa run -m models/model-$BF_PROJECT_ID.tar.gz $([ -z \"$AUTH_TOKEN\" ] && echo \"\" || echo \"--auth-token $AUTH_TOKEN\" ) --enable-api --debug"]
