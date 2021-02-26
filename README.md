@@ -16,13 +16,23 @@ For more information visit the [Botfront project on Github](https://github.com/b
 
 ## Integrating Rasa upstream changes
 
-1. Pull latest tagged version
+1. If you don't have the rasa upstrem do
 ```bash
-#TODO add git command
+git remote add upstream https://github.com/RasaHQ/rasa.git
 ```
-2. Do this
-3. Do that
-4. Apply versions
+2. Then retreive all the tags
+```bash
+ git fetch upstream --tags 
+```
+3. Merge the most recent one
+```bash
+ git merge TAG
+```
+4. Solve conflicts
+5. Apply versions using
+```bash
+ command to release here
+```
 
 ## Rasa Addons
 
