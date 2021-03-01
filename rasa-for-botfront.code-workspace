@@ -1,0 +1,27 @@
+{
+	"folders": [
+		{
+			"name": "Repository settings",
+			"path": "."
+		},
+		{
+			"name": "Addons",
+			"path": "rasa_addons"
+		},
+		{
+			"name": "Rasa",
+			"path": "rasa"
+		},
+	],
+	"settings": {
+		"files.exclude": {
+			"**/.git": true,
+			"**/.mypy_cache": true,
+			"**/.pytest_cache": true,
+			"**/.venv": true,
+			"**/.DS_Store": true,
+			"**.egg-info": true,
+			"**/.coverage": true
+		},
+	}
+}
