@@ -1,0 +1,13 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "rasa-for-botfront",
+            "type": "python",
+            "request": "launch",
+            "module": "rasa",
+            "cwd": "${env:BF_PROJECT_PATH}",
+            "args": ["run", "--debug", "--enable-api"]
+        }
+    ]
+}
