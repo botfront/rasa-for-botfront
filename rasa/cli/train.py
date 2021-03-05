@@ -78,7 +78,20 @@ def train(args: argparse.Namespace, can_exit: bool = False) -> Optional[Text]:
         args.domain, "domain", DEFAULT_DOMAIN_PATH, none_is_valid=True
     )
 
-    config = _get_valid_config(args.config, CONFIG_MANDATORY_KEYS)
+    # bf
+    if os.path.isdir(args.config):
+        from rasa.telemetry import TELEMETRY_ENABLED_ENVIRONMENT_VARIABLE
+        from pathlib import Path
+
+        os.environ[TELEMETRY_ENABLED_ENVIRONMENT_VARIABLE] = "false"
+        config = [
+            Path(args.config) / f
+            for f in os.listdir(args.config)
+            if f.startswith("config-")
+        ]
+    else:
+        config = _get_valid_config(args.config, CONFIG_MANDATORY_KEYS)
+    # /bf
 
     training_files = [
         rasa.cli.utils.get_validated_path(
