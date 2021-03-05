@@ -49,6 +49,7 @@ from rasa.shared.core.constants import (
     ACTION_SESSION_START_NAME,
     ACTION_LISTEN_NAME,
     REQUESTED_SLOT,
+    SESSION_START_METADATA_SLOT,
 )
 from rasa.shared.core.domain import Domain, SessionConfig
 from rasa.shared.core.events import (
@@ -1095,7 +1096,11 @@ async def test_requesting_non_existent_tracker(rasa_app: SanicASGITestClient):
     content = response.json()
     assert response.status == HTTPStatus.OK
     assert content["paused"] is False
-    assert content["slots"] == {"name": None, REQUESTED_SLOT: None}
+    assert content["slots"] == {
+        "name": None,
+        REQUESTED_SLOT: None,
+        SESSION_START_METADATA_SLOT: None,
+    }
     assert content["sender_id"] == "madeupid"
     assert content["events"] == [
         {
@@ -1500,6 +1505,29 @@ async def test_trigger_intent(rasa_app: SanicASGITestClient):
     assert parsed_content["messages"]
 
 
+async def test_trigger_intent_with_entity(rasa_app: SanicASGITestClient):
+    entity_name = "name"
+    entity_value = "Sara"
+    data = {INTENT_NAME_KEY: "greet", "entities": {entity_name: entity_value}}
+    _, response = await rasa_app.post(
+        "/conversations/test_trigger/trigger_intent", json=data
+    )
+
+    assert response.status == HTTPStatus.OK
+
+    parsed_content = response.json()
+    last_slot_set_event = [
+        event
+        for event in parsed_content["tracker"]["events"]
+        if event["event"] == "slot"
+    ][-1]
+
+    assert parsed_content["tracker"]
+    assert parsed_content["messages"]
+    assert last_slot_set_event["name"] == entity_name
+    assert last_slot_set_event["value"] == entity_value
+
+
 async def test_trigger_intent_with_missing_intent_name(rasa_app: SanicASGITestClient):
     test_sender = "test_trigger_intent_with_missing_action_name"
 
@@ -1713,6 +1741,28 @@ stories:
         ),
         # empty conversation
         ([], None, True, 'version: "2.0"'),
+        # Conversation with slot
+        (
+            [
+                ActionExecuted(ACTION_SESSION_START_NAME),
+                SessionStarted(),
+                UserUttered("hi", {"name": "greet"}),
+                ActionExecuted("utter_greet"),
+                SlotSet(REQUESTED_SLOT, "some value"),
+            ],
+            None,
+            True,
+            """version: "2.0"
+stories:
+- story: some-conversation-ID
+  steps:
+  - intent: greet
+    user: |-
+      hi
+  - action: utter_greet
+  - slot_was_set:
+    - requested_slot: some value""",
+        ),
     ],
 )
 async def test_get_story(

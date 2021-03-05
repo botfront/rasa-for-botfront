@@ -59,17 +59,9 @@ class TrainingDataWriter:
         for example in [e.as_dict_nlu() for e in training_data.training_examples]:
             if not example.get(INTENT):
                 continue
-            # bf >
-            metadata = example.pop("metadata", {})
-            language = metadata.pop("language", None)
-            if metadata:
-                example["metadata"] = metadata
-            # < bf
+        
             rasa_nlu_training_data_utils.remove_untrainable_entities_from(example)
-            # bf >
-            intent = (example[INTENT], language)
-            # intent = example[INTENT]
-            # < bf
+            intent = example[INTENT]
             training_examples.setdefault(intent, [])
             training_examples[intent].append(example)
 
@@ -78,8 +70,12 @@ class TrainingDataWriter:
     @staticmethod
     def generate_list_item(text: Text) -> Text:
         """Generates text for a list item."""
+        return f"- {TrainingDataWriter.generate_string_item(text)}"
 
-        return f"- {rasa.shared.nlu.training_data.util.encode_string(text)}\n"
+    @staticmethod
+    def generate_string_item(text: Text) -> Text:
+        """Generates text for a string item."""
+        return f"{rasa.shared.nlu.training_data.util.encode_string(text)}\n"
 
     @staticmethod
     def generate_message(message: Dict[Text, Any]) -> Text:
