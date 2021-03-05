@@ -154,7 +154,9 @@ async def train_async(
     with TempDirectoryPath(tempfile.mkdtemp()) as train_path:
         # bf mod
         from rasa_addons.importers import BotfrontFileImporter
+        from pathlib import Path
 
+        os.mkdir(Path(train_path) / DEFAULT_CORE_SUBDIRECTORY_NAME)
         file_importer = BotfrontFileImporter(config, domain, training_files)
         # domain = await file_importer.get_domain()
 
@@ -329,8 +331,8 @@ async def _train_async_internal(
     new_fingerprint = await model.model_fingerprint(file_importer)
     old_model = model.get_latest_model(output_path)
     nlu_untrainable = [l for l, d in nlu_data.items() if d.is_empty()]  # bf
-    domain = await file_importer.get_domain() # bf
-    core_untrainable = domain.is_empty() or stories.is_empty() # bf
+    domain = await file_importer.get_domain()  # bf
+    core_untrainable = domain.is_empty() or stories.is_empty()  # bf
 
     if not force_training:
         fingerprint_comparison = model.should_retrain(
@@ -338,7 +340,7 @@ async def _train_async_internal(
             old_model,
             train_path,
             # has_e2e_examples=nlu_data.has_e2e_examples(), # bf
-            nlu_untrainable=nlu_untrainable, # bf
+            nlu_untrainable=nlu_untrainable,  # bf
         )
     else:
         fingerprint_comparison = FingerprintComparisonResult(force_training=True)
@@ -348,7 +350,9 @@ async def _train_async_internal(
             if l not in nlu_untrainable
         ]  # bf
 
-    fingerprint_comparison.core = fingerprint_comparison.core and not core_untrainable # bf
+    fingerprint_comparison.core = (
+        fingerprint_comparison.core and not core_untrainable
+    )  # bf
 
     if fingerprint_comparison.is_training_required():
         async with telemetry.track_model_training(
@@ -411,7 +415,8 @@ async def _do_training(
             model_to_finetune=model_to_finetune,
             finetuning_epoch_fraction=finetuning_epoch_fraction,
         )
-        interpreter_path = os.path.join(model_path, DEFAULT_NLU_SUBDIRECTORY_NAME)
+        # interpreter_path = os.path.join(model_path, DEFAULT_NLU_SUBDIRECTORY_NAME)
+        _, interpreter_path = model.get_model_subdirectories(model_path)  # bf
     else:
         rasa.shared.utils.cli.print_color(
             "NLU data/configuration did not change. No need to retrain NLU model.",
