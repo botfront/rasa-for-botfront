@@ -87,7 +87,7 @@ def train(args: argparse.Namespace, can_exit: bool = False) -> Optional[Text]:
         config = [
             Path(args.config) / f
             for f in os.listdir(args.config)
-            if f.startswith("config-")
+            if f.startswith("config") and f.endswith(("yml", "yaml"))
         ]
     else:
         config = _get_valid_config(args.config, CONFIG_MANDATORY_KEYS)
