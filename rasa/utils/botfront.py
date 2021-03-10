@@ -104,6 +104,11 @@ def set_endpoints_credentials_args_from_remote(args):
     project_id = os.environ.get("BF_PROJECT_ID")
     if not project_id or not bf_url:
         return
+    here = os.listdir(os.getcwd())
+    if "endpoints.yml" in here and not args.endpoints:
+        args.endpoints = "endpoints.yml"
+    if "credentials.yml" in here and not args.credentials:
+        args.credentials = "credentials.yml"
     if args.endpoints and args.credentials:
         return
 
