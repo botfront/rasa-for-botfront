@@ -78,10 +78,8 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # the entry point
 EXPOSE 5005
-ENTRYPOINT ["bash"]
 
-CMD -c \
-  "rasa run \
-  $([ -n \"$MODEL_PATH\" ] && echo \"-m $MODEL_PATH\") \
-  $([ -n \"$AUTH_TOKEN\" ] && echo \"--auth-token $AUTH_TOKEN\" ) \
-  --enable-api --debug"
+CMD rasa run \
+  $([ -n "$MODEL_PATH" ] && echo "-m $MODEL_PATH") \
+  $([ -n "$AUTH_TOKEN" ] && echo "--auth-token $AUTH_TOKEN" ) \
+  --enable-api --debug
