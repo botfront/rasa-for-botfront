@@ -1648,7 +1648,7 @@ def _training_payload_from_json(
         domain=domain_path,
         config=config_paths,  # bf
         training_files=str(temp_dir),
-        output=model_output_directory,
+        output=os.environ.get("MODEL_PATH", DEFAULT_MODELS_PATH),  # bf
         force_training=request_payload.get(
             "force", request.args.get("force_training", False)
         ),
