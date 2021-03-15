@@ -47,6 +47,8 @@ class BotfrontFileImporter(TrainingDataImporter):
                 }
 
     def path_for_nlu_lang(self, lang) -> List[Text]:
+        if len(self.nlu_config.keys()) < 2:
+            return self._nlu_files
         return [x for x in self._nlu_files if f"nlu/{lang}" in x or f"nlu-{lang}" in x]
 
     async def get_config(self) -> Dict:
