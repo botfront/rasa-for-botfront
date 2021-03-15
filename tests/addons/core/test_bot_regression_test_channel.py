@@ -32,7 +32,7 @@ bot_regression_test_data = [
         ],
     },
     {
-        # test_data1: intent mismatch
+        # bot_regression_test_data1: intent mismatch
         "expected": [
             { "user": "run step one", "intent": "step_one", "entities": [] },
         ],
@@ -250,11 +250,20 @@ bot_regression_test_data = [
             { "action": "utter_step_one", "theme": "expected" },
         ],
     },
+    {
+        # bot_regression_test_data10: doesn't matter whether entities key is not present, or an empty list
+        "expected": [
+            { "user": "run step one", "intent": "step_one" },
+        ],
+        "actual": [
+            { "user": "run step one", "intent": "step_one", "entities": [] },
+        ],
+        "result": [{ "user": "run step one", "intent": "step_one" }],
+    },
 ]
 
 @pytest.mark.parametrize("test_data", bot_regression_test_data)
 def test_bot_regression_test_channel(test_data):
     input_channel = BotRegressionTestInput()
     result = input_channel.compare_step_lists(test_data.get("actual"), test_data.get("expected"))
-    assert test_data.get("result")
     assert result == test_data.get("result")
