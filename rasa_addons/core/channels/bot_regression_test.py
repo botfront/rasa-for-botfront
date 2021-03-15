@@ -94,7 +94,7 @@ class BotRegressionTestInput(RestInput):
             (
                 i
                 for i, current_step in enumerate(step_list)
-                if self.compare_steps(step, current_step)
+                if self.compare_steps(step.copy(), current_step.copy())
             ),
             None,
         )
