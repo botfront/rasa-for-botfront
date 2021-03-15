@@ -72,8 +72,8 @@ class BotRegressionTestInput(RestInput):
         return collector
 
     def compare_steps(self, actual_step, expected_step) -> bool:
-        actual_entities = actual_step.get("entities", [])
-        expected_entities = expected_step.get("entities", [])
+        actual_entities = actual_step.pop("entities", [])
+        expected_entities = expected_step.pop("entities", [])
         return (
             actual_step == expected_step
             and all(e in actual_entities for e in expected_entities)
