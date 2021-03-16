@@ -1006,10 +1006,12 @@ def create_app(
             "train your model.",
         )
 
+        load_model_after = request.args.get("load_model_after", False)
         if request.headers.get("Content-type") == YAML_CONTENT_TYPE:
             training_payload = _training_payload_from_yaml(request, temporary_directory)
         else:
             training_payload = _training_payload_from_json(request, temporary_directory)
+            load_model_after = request.json.get("load_model_after", load_model_after)
 
         try:
             with app.active_training_processes.get_lock():
@@ -1022,6 +1024,15 @@ def create_app(
 
             if training_result.model:
                 filename = os.path.basename(training_result.model)
+
+                if load_model_after is True:
+                    app.agent = await _load_agent(
+                        training_result.model,
+                        endpoints=endpoints,
+                        lock_store=app.agent.lock_store,
+                    )
+
+                    logger.debug(f"Successfully loaded model '{filename}'.")
 
                 return await response.file(
                     training_result.model,
@@ -1648,7 +1659,7 @@ def _training_payload_from_json(
         domain=domain_path,
         config=config_paths,  # bf
         training_files=str(temp_dir),
-        output=model_output_directory,
+        output=os.environ.get("MODEL_PATH", DEFAULT_MODELS_PATH),  # bf
         force_training=request_payload.get(
             "force", request.args.get("force_training", False)
         ),
