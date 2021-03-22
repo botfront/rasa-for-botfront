@@ -1,5 +1,6 @@
 from typing import Dict, Text, Any
 from rasa_addons.core.actions.slot_rule_validator import validate_with_rule
+from pypred import Predicate
 
 class RequiredSlotsGraphParser:
     def __init__(self, required_slots_graph: Dict[Text, Any]) -> None:
@@ -40,6 +41,15 @@ class RequiredSlotsGraphParser:
     def check_condition(self, tracker, condition):
         if condition is None:
             return True
+        if isinstance(condition, str):
+            slots = dict()
+            for slotName, slotValue in tracker.slots.items():
+                slots[slotName] = slotValue.value
+            predicate = Predicate(condition)
+            if predicate.is_valid() is not True:
+                return False
+            result = predicate.evaluate(slots)
+            return result
         props = condition.get("properties", {})
         children = condition.get("children1", {}).values()
         if condition.get("type") == "rule":
