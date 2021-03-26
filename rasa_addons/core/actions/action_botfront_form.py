@@ -6,14 +6,18 @@ from rasa_addons.core.actions.required_slots_graph_parser import (
 )
 from rasa_addons.core.actions.slot_rule_validator import validate_with_rule
 from rasa_addons.core.actions.submit_form_to_botfront import submit_form_to_botfront
-
+from rasa.shared.core.domain import Domain
 from rasa.core.actions.action import (
     Action,
+    ActionExecuted,
     ActionExecutionRejection,
     create_bot_utterance,
+    RemoteAction
 )
 from rasa.shared.core.events import Event, ActiveLoop, SlotSet
 from rasa.shared.core.constants import REQUESTED_SLOT
+from rasa.shared.core.trackers import DialogueStateTracker
+from rasa.utils.endpoints import EndpointConfig
 
 logger = logging.getLogger(__name__)
 
@@ -33,8 +37,9 @@ class ActionBotfrontForm(Action):
         to use a JSON API instead of a Python class-based one.
     """
 
-    def __init__(self, name: Text):
+    def __init__(self, name: Text, action_endpoint: Optional[EndpointConfig]):
         self.action_name = name
+        self.action_endpoint = action_endpoint
         self.form_spec = {}
 
     def name(self) -> Text:
@@ -372,9 +377,38 @@ class ActionBotfrontForm(Action):
         events = []
         for slot, value in list(slot_dict.items()):
             validation_rule = self.get_field_for_slot(slot, "validation")
-            validated = validate_with_rule(value, validation_rule)
+            
+            if validation_rule is None:
+                events += [SlotSet(slot, value)]
+                validated = True
+            else:
+                operator, comparatum = (
+                    validation_rule.get("operator"),
+                    validation_rule.get("comparatum"),
+                )
 
-            events += [SlotSet(slot, value if validated else None)]
+                if operator == 'contains' and comparatum == 'custom':
+                    validate_name = f"bf_{self.name()}"
+
+                    if validate_name in domain.action_names_or_texts:
+                        _tracker = self._temporary_tracker(tracker, events, domain)
+                        _action = RemoteAction(validate_name, self.action_endpoint)
+                        validate_events = await _action.run(output_channel, nlg, _tracker, domain)
+
+                        validated_slot_names = [
+                            event.key for event in validate_events if isinstance(event, SlotSet)
+                        ]
+
+                        if slot not in validated_slot_names:
+                            validate_events += [SlotSet(slot, None)]
+                        events += validate_events
+                        validated = True
+                    else:
+                        logger.info(f"Action not found: {validate_name}")
+                        validated = False
+                else:
+                    validated = validate_with_rule(value, validation_rule)
+                    events += [SlotSet(slot, value if validated else None)]
 
             # is it changing during this conversational turn? if it did, then:
             # either tracker value is different, or if tracker was updated
@@ -390,6 +424,21 @@ class ActionBotfrontForm(Action):
                 )
 
         return events
+
+    def _temporary_tracker(
+        self,
+        current_tracker: DialogueStateTracker,
+        additional_events: List[Event],
+        domain: Domain,
+    ) -> DialogueStateTracker:
+        return DialogueStateTracker.from_events(
+            current_tracker.sender_id,
+            current_tracker.events_after_latest_restart()
+            # Insert form execution event so that it's clearly distinguishable which
+            # events were newly added.
+            + [ActionExecuted(self.name())] + additional_events,
+            slots=domain.slots,
+        )
 
     async def validate(
         self,

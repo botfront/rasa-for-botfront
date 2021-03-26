@@ -167,7 +167,7 @@ def action_for_name_or_text(
 
     # bf >
     elif domain.forms.get(action_name_or_text, {}).get("graph_elements") is not None:
-        return generate_bf_form_action(action_name_or_text)
+        return generate_bf_form_action(action_name_or_text, action_endpoint)
     elif action_name_or_text in actions_bf:
         return actions_bf[action_name_or_text]
     # </ bf

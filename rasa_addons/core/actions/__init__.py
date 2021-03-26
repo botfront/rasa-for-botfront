@@ -14,5 +14,5 @@ def actions() -> List["Action"]:
 
 actions_bf = {a.name(): a for a in actions()}
 
-def generate_bf_form_action(name):
-    return ActionBotfrontForm(name)
+def generate_bf_form_action(name, action_endpoint):
+    return ActionBotfrontForm(name, action_endpoint)
