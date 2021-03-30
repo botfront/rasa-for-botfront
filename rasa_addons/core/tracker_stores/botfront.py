@@ -77,6 +77,7 @@ class BotfrontTrackerStore(TrackerStore):
         self.tracker_persist_time = kwargs.get("tracker_persist_time", 3600)
         self.test_tracker_persist_time = kwargs.get("test_tracker_persist_time", 240)
         self.max_events = kwargs.get("max_events", 100)
+        self.event_broker = kwargs.get("event_broker")
         self.trackers = {}
         self.test_trackers = {}
         self.trackers_info = (
@@ -92,7 +93,7 @@ class BotfrontTrackerStore(TrackerStore):
         self.environement = os.environ.get("BOTFRONT_ENV", "development")
         self.botfront_test_regex = re.compile('^bot_regression_test_')
 
-        super(BotfrontTrackerStore, self).__init__(domain)
+        super(BotfrontTrackerStore, self).__init__(domain, event_broker=self.event_broker)
         logger.debug("BotfrontTrackerStore tracker store created")
 
     def _graphql_query(self, query, params):
@@ -174,6 +175,8 @@ class BotfrontTrackerStore(TrackerStore):
     def save(self, canonical_tracker):
         serialized_tracker = self._serialize_tracker_to_dict(canonical_tracker)
         sender_id = canonical_tracker.sender_id
+        if self.event_broker:
+            self.stream_events(canonical_tracker)
         if self.botfront_test_regex.match(sender_id):
             self.test_trackers[sender_id] = canonical_tracker
             return serialized_tracker["events"]
