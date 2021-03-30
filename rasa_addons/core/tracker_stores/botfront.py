@@ -175,11 +175,13 @@ class BotfrontTrackerStore(TrackerStore):
     def save(self, canonical_tracker):
         serialized_tracker = self._serialize_tracker_to_dict(canonical_tracker)
         sender_id = canonical_tracker.sender_id
-        if self.event_broker:
-            self.stream_events(canonical_tracker)
         if self.botfront_test_regex.match(sender_id):
             self.test_trackers[sender_id] = canonical_tracker
             return serialized_tracker["events"]
+        # call the event broker below the test exit so that the logs aren't filled with testing data
+        if self.event_broker:
+            self.stream_events(canonical_tracker)
+
         # Fetch here just in case retrieve wasn't called first
         tracker = self.trackers.get(sender_id)
 
