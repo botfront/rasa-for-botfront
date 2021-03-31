@@ -402,6 +402,8 @@ class ActionBotfrontForm(Action):
                         if slot not in validated_slot_names:
                             validate_events += [SlotSet(slot, None)]
                         events += validate_events
+
+                        tracker.update_with_events(validate_events, domain)
                         validated = True
                     else:
                         logger.info(f"Action not found: {validate_name}")
