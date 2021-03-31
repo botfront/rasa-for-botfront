@@ -92,7 +92,7 @@ class BotfrontTrackerStore(TrackerStore):
         self.environement = os.environ.get("BOTFRONT_ENV", "development")
         self.botfront_test_regex = re.compile('^bot_regression_test_')
 
-        super(BotfrontTrackerStore, self).__init__(domain)
+        super(BotfrontTrackerStore, self).__init__(domain, event_broker=kwargs.get("event_broker"))
         logger.debug("BotfrontTrackerStore tracker store created")
 
     def _graphql_query(self, query, params):
@@ -177,6 +177,10 @@ class BotfrontTrackerStore(TrackerStore):
         if self.botfront_test_regex.match(sender_id):
             self.test_trackers[sender_id] = canonical_tracker
             return serialized_tracker["events"]
+        # call the event broker below the test exit so that the logs aren't filled with testing data
+        if self.event_broker:
+            self.stream_events(canonical_tracker)
+
         # Fetch here just in case retrieve wasn't called first
         tracker = self.trackers.get(sender_id)
 
