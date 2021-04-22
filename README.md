@@ -1,19 +1,50 @@
 # Rasa for Botfront
 
-A fork to be used with **Botfront**, an open source chatbot platform built with Rasa.
+**Rasa for Botfront** is a maintained forked version of [Rasa](https://github.com/rasaHQ/rasa) to be used with [Botfront project on Github](https://github.com/botfront/botfront), an enterprise-grade open source conversational platform built for Rasa teams.
 
 For more information visit the [Botfront project on Github](https://github.com/botfront/botfront)
 
+## Main features supported by this fork (when used with Botfront)
+- Multilingual support (incl. NLG)
+- Form UI support
+- Conversion routes
+- Fetching creds and endpoints at startup
+- support for gazette (that is not really important)
+- Automated tests
+- NLU evaluation
 
-# Rasa Addons
 
-## rasa_addons.core.policies.BotfrontDisambiguationPolicy
+## Integrating Rasa upstream changes
+
+1. If you don't have the rasa upstrem do
+```bash
+git remote add upstream https://github.com/RasaHQ/rasa.git
+```
+2. Then retreive all the tags
+```bash
+ git fetch upstream --tags 
+```
+3. Merge the most recent one
+```bash
+ git merge TAG
+```
+4. Solve conflicts
+5. Apply versions using
+```bash
+ command to release here
+```
+
+## Rasa Addons
+
+Rasa for Botfront is packaged with custom componenents used by Botfront.
+
+### `rasa_addons.core.policies.BotfrontDisambiguationPolicy`
 
 This policy implements fallback and suggestion-based disambiguation.
 
 It works with actions ``rasa_addons.core.actions.ActionBotfrontDisambiguation``, ``rasa_addons.core.actions.ActionBotfrontDisambiguationFollowup`` and ``rasa_addons.core.actions.ActionBotfrontFallback``, and NLU pipeline component ``rasa_addons.nlu.components.intent_ranking_canonical_example_injector.IntentRankingCanonicalExampleInjector``.
 
-### Example usage
+#### Example usage
 
 ```yaml
 policies:
@@ -29,7 +60,7 @@ policies:
   ...
 ```
 
-### Note: Automatic generation of suggestion button titles
+#### Note: Automatic generation of suggestion button titles
 
 Botfront introduces the notion of "canonical" training examples, which provide a canonical human-readable text for intent labels. For example, for an intent ``pay_bills`` with examples "Pay bills", "I want to pay my bills", "How does one pay the bills on this website?", the first example may be selected as canonical. Canonical status serves as a cue to the bot designer, since intent labels can become untractable over time. It may also come to serve more Botfront-internal roles in the future.
 
@@ -44,7 +75,7 @@ pipeline:
 
 This NLU component enriches the ``intent_ranking`` key of user messages in the tracker with canonical text, so that the Disambiguation Policy may pick it up. If the NLU component is not used, buttons will have the intent name as their title.
 
-### Parameters
+#### Parameters
 
 ##### fallback_trigger
 
@@ -66,31 +97,10 @@ Int (default ``2``): the maximum number of suggestions to display (excluding the
 
 List (default ``["^chitchat\..*", "^basics\..*"]``): any intent (exactly) matching one of these regular expressions will not be shown as a suggestion.
 
-## rasa_addons.core.policies.BotfrontMappingPolicy
 
-This policy implements regular expression-based direct mapping from intent to action.
+### `rasa_addons.core.channels.webchat.WebchatInput`
 
-### Example usage
-
-```yaml
-policies:
-  ...
-  - name: rasa_addons.core.policies.BotfrontMappingPolicy
-    triggers:
-      - trigger: '^map\..+'
-        action: 'action_botfront_mapping'
-        extra_actions:
-          - 'action_myaction'
-  ...
-```
-
-### ActionBotfrontMapping
-
-The default action ActionBotfrontMapping takes the intent that triggered the mapping policy, e.g. ``map.my_intent`` and tries to generate the template ``utter_map.my_intent``.
-
-## rasa_addons.core.channels.webchat.WebchatInput
-
-### Example usage
+#### Example usage
 
 ```yaml
 credentials:
@@ -102,11 +112,11 @@ credentials:
   ...
 ```
 
-## rasa_addons.core.channels.rest.BotfrontRestInput
+### `rasa_addons.core.channels.rest.BotfrontRestInput`
 
 Rest Input Channel with multilanguage and metadata support.
 
-### Example usage
+#### Example usage
 
 ```yaml
 credentials:
@@ -116,10 +126,10 @@ credentials:
   ...
 ```
 
-## rasa_addons.core.channels.bot_regression_test.BotRegressionTestInput:
+### `rasa_addons.core.channels.bot_regression_test.BotRegressionTestInput`:
 Conversation testing channel. Simulates each user event in the input test stories as a message sent by a user, then compares the input story to the results from rasa. Returns a diff of the input story and output story with expected and actual events.
 
-## Example usage
+#### Example usage
 
 ```yaml
 credentials:
@@ -129,15 +139,15 @@ credentials:
   ...
 ```
 
-## rasa_addons.core.nlg.BotfrontTemplatedNaturalLanguageGenerator
+### `rasa_addons.core.nlg.BotfrontTemplatedNaturalLanguageGenerator`
 
 Idential to Rasa's `TemplatedNaturalLanguageGenerator`, except in handles templates with a language key.
 
-## rasa_addons.core.nlg.GraphQLNaturalLanguageGenerator
+### `rasa_addons.core.nlg.GraphQLNaturalLanguageGenerator`
 
-The new standard way to connect to the Botfront NLG endpoint. Note that support for the legacy REST endpoint is maintained for the moment. This feature is accessed by supplying a URL that doesn't contain the substring "graphql".
+The standard way to connect to the Botfront NLG endpoint.
 
-### Example usage
+#### Example usage
 
 ```yaml
 endpoints:
